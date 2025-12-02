@@ -32,12 +32,16 @@ async def handle_function(args: Message = CommandArg()):
     
     options = [opt for opt in options if opt]
 
-    if len(options) < 1:
+    if len(options) <= 1:
         await roll.finish("没有识别到选项喵")
 
-    await roll.send("命运开始转动喵...")
+    hidden = random.randint(0,100)
+    if hidden < 3:
+        await roll.finish("自...自己的事自己决定喵！")
 
-    await asyncio.sleep(1)
+    await roll.send("命运的齿轮开始转动...")
+
+    await asyncio.sleep(3)
 
     chosen_one = random.choice(options)
 
