@@ -1,0 +1,25 @@
+[project]
+name = "fiobot"
+version = "0.1.0"
+description = "fiobot"
+readme = "README.md"
+requires-python = ">=3.9, <4.0"
+dependencies = [
+    "nonebot2[fastapi]>=2.4.4",
+    "nonebot2[httpx]>=2.4.4",
+    "nonebot2[websockets]>=2.4.4",
+    "nonebot-adapter-onebot>=2.4.6",
+    "nonebot-plugin-skland>=0.5.5",
+]
+
+[tool.nonebot]
+plugin_dirs = ["fio_bot/plugins"]
+builtin_plugins = ["echo"]
+
+[tool.nonebot.adapters]
+"@local" = []
+nonebot-adapter-onebot = [{name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11"}]
+
+[tool.nonebot.plugins]
+"@local" = []
+nonebot-plugin-skland = ["nonebot_plugin_skland"]

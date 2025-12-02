@@ -1,0 +1,79 @@
+--- Python ---
+
+pycache/
+*.py[cod]
+*$py.class
+*.so
+
+--- Distribution / Packaging ---
+
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+--- Virtual Environments ---
+
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+--- IDEs ---
+
+.idea/
+.vscode/
+*.swp
+*.swo
+
+--- NoneBot2 ---
+
+.env
+.env.*
+!.env.example
+
+Runtime Data
+
+data/
+cache/
+log/
+logs/
+
+Local Databases
+
+*.db
+*.sqlite
+*.sqlite3
+
+--- Project Specific (FioBot) ---
+
+Ignore images inside resource folders
+
+*/plugins/randomfio/resource/
+*/randomfio/resource/
+
+Keep the resource folder itself
+
+!/plugins/randomfio/resource/.gitkeep
+!/randomfio/resource/.gitkeep
+
+--- OS ---
+
+.DS_Store
+Thumbs.db
