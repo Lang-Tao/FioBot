@@ -9,6 +9,21 @@ jobs:
     deploy:
         runs-on: ubuntu-latest
         steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Copy files via SCP
+              uses: appleboy/scp-action@master
+              with:
+                  host: ${{ secrets.ALIYUN_HOST }}
+                  username: ${{ secrets.ALIYUN_USER }}
+                  key: ${{ secrets.ALIYUN_KEY }}
+                  source: "."
+                  target: "/root/fiobot"
+                  # 排除不需要上传的文件和目录，加快速度
+                  rm: false # 不删除目标目录中的现有文件，只覆盖
+                  strip_components: 0
+
             - name: Deploy using SSH
               uses: appleboy/ssh-action@master
               with:
@@ -16,22 +31,17 @@ jobs:
                   username: ${{ secrets.ALIYUN_USER }}
                   key: ${{ secrets.ALIYUN_KEY }}
                   script: |
-                      # 设置错误处理，任何命令失败则停止
+                      # 设置错误处理
                       set -e
 
-                      echo "🚀 Starting deployment..."
+                      echo "🚀 Starting deployment tasks..."
 
                       # 1. 进入工作目录
                       TARGET_DIR="/root/fiobot"
-                      if [ ! -d "$TARGET_DIR" ]; then
-                        echo "❌ Directory $TARGET_DIR does not exist!"
-                        exit 1
-                      fi
                       cd $TARGET_DIR
 
-                      # 2. 拉取最新代码
-                      echo "📥 Pulling latest code..."
-                      git pull origin main
+                      # 2. (已通过 SCP 上传代码，无需 git pull)
+                      echo "✅ Code updated via SCP."
 
                       # 3. 安装依赖
                       echo "📦 Checking dependencies..."
@@ -54,8 +64,9 @@ jobs:
                           echo "✅ Systemd service 'fiobot' restarted."
                       else
                           echo "⚠️ Systemd service 'fiobot' not found."
-                          
-                          
+                          # 如果使用 nohup 方式，请取消注释以下行：
+                          # pkill -f "python bot.py" || true
+                          # nohup python bot.py > bot.log 2>&1 &
                       fi
 
                       echo "🎉 Deployment completed successfully!"
