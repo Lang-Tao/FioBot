@@ -1,0 +1,61 @@
+name: Deploy to Aliyun
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Deploy using SSH
+              uses: appleboy/ssh-action@master
+              with:
+                  host: ${{ secrets.ALIYUN_HOST }}
+                  username: ${{ secrets.ALIYUN_USER }}
+                  key: ${{ secrets.ALIYUN_KEY }}
+                  script: |
+                      # 设置错误处理，任何命令失败则停止
+                      set -e
+
+                      echo "🚀 Starting deployment..."
+
+                      # 1. 进入工作目录
+                      TARGET_DIR="/root/fiobot"
+                      if [ ! -d "$TARGET_DIR" ]; then
+                        echo "❌ Directory $TARGET_DIR does not exist!"
+                        exit 1
+                      fi
+                      cd $TARGET_DIR
+
+                      # 2. 拉取最新代码
+                      echo "📥 Pulling latest code..."
+                      git pull origin main
+
+                      # 3. 安装依赖
+                      echo "📦 Checking dependencies..."
+                      if [ -f "requirements.txt" ]; then
+                          echo "Found requirements.txt, installing..."
+                          pip install -r requirements.txt
+                      elif [ -f "pyproject.toml" ]; then
+                          echo "Found pyproject.toml, installing..."
+                          pip install .
+                      else
+                          echo "⚠️ No dependency file found, skipping installation."
+                      fi
+
+                      # 4. 重启服务
+                      echo "🔄 Restarting application..."
+
+                      # 假设使用 systemd 管理服务，服务名为 fiobot
+                      if systemctl list-units --full -all | grep -Fq "fiobot.service"; then
+                          systemctl restart fiobot
+                          echo "✅ Systemd service 'fiobot' restarted."
+                      else
+                          echo "⚠️ Systemd service 'fiobot' not found."
+                          
+                          
+                      fi
+
+                      echo "🎉 Deployment completed successfully!"

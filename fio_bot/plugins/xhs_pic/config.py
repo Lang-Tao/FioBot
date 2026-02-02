@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-
+from typing import Optional
 
 class Config(BaseModel):
-    """Plugin Config Here"""
+    xhs_cookie: Optional[str] = None
