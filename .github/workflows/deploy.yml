@@ -34,19 +34,21 @@ jobs:
                       echo "🚀 Starting deployment tasks..."
 
                       TARGET_DIR="/root/fiobot"
+                      VENV_DIR="/root/venv"
+
                       cd $TARGET_DIR
 
                       echo "✅ Code updated via SCP."
 
-                      # 3. 设置虚拟环境 (适配 Debian 12 PEP 668)
-                      echo "🐍 Setting up virtual environment..."
-                      if [ ! -d ".venv" ]; then
+                      # 3. 设置虚拟环境 (适配您的服务器配置)
+                      echo "🐍 Setting up virtual environment at $VENV_DIR..."
+                      if [ ! -d "$VENV_DIR" ]; then
                           echo "Creating virtual environment..."
-                          python3 -m venv .venv
+                          python3 -m venv $VENV_DIR
                       fi
 
-                      # 使用虚拟环境中的 pip
-                      PIP_CMD="$TARGET_DIR/.venv/bin/pip"
+                      # 使用指定虚拟环境中的 pip
+                      PIP_CMD="$VENV_DIR/bin/pip"
 
                       echo "📦 Checking dependencies..."
                       if [ -f "requirements.txt" ]; then
@@ -67,8 +69,6 @@ jobs:
                           echo "✅ Systemd service 'fiobot' restarted."
                       else
                           echo "⚠️ Systemd service 'fiobot' not found."
-                          echo "💡 Tip: Update your systemd service to use the virtual environment:"
-                          echo "ExecStart=$TARGET_DIR/.venv/bin/nb run"
                       fi
 
                       echo "🎉 Deployment completed successfully!"
