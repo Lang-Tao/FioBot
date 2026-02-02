@@ -12,6 +12,9 @@ dependencies = [
     "nonebot-plugin-skland>=0.5.5",
 ]
 
+[tool.setuptools]
+packages = ["fio_bot"]
+
 [tool.nonebot]
 plugin_dirs = ["fio_bot/plugins"]
 builtin_plugins = ["echo"]
