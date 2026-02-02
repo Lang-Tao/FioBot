@@ -20,8 +20,7 @@ jobs:
                   key: ${{ secrets.ALIYUN_KEY }}
                   source: "."
                   target: "/root/fiobot"
-                  # 排除不需要上传的文件和目录，加快速度
-                  rm: false # 不删除目标目录中的现有文件，只覆盖
+                  rm: false
                   strip_components: 0
 
             - name: Deploy using SSH
@@ -31,26 +30,31 @@ jobs:
                   username: ${{ secrets.ALIYUN_USER }}
                   key: ${{ secrets.ALIYUN_KEY }}
                   script: |
-                      # 设置错误处理
                       set -e
-
                       echo "🚀 Starting deployment tasks..."
 
-                      # 1. 进入工作目录
                       TARGET_DIR="/root/fiobot"
                       cd $TARGET_DIR
 
-                      # 2. (已通过 SCP 上传代码，无需 git pull)
                       echo "✅ Code updated via SCP."
 
-                      # 3. 安装依赖
+                      # 3. 设置虚拟环境 (适配 Debian 12 PEP 668)
+                      echo "🐍 Setting up virtual environment..."
+                      if [ ! -d ".venv" ]; then
+                          echo "Creating virtual environment..."
+                          python3 -m venv .venv
+                      fi
+
+                      # 使用虚拟环境中的 pip
+                      PIP_CMD="$TARGET_DIR/.venv/bin/pip"
+
                       echo "📦 Checking dependencies..."
                       if [ -f "requirements.txt" ]; then
                           echo "Found requirements.txt, installing..."
-                          pip install -r requirements.txt
+                          $PIP_CMD install -r requirements.txt
                       elif [ -f "pyproject.toml" ]; then
                           echo "Found pyproject.toml, installing..."
-                          pip install .
+                          $PIP_CMD install .
                       else
                           echo "⚠️ No dependency file found, skipping installation."
                       fi
@@ -58,15 +62,13 @@ jobs:
                       # 4. 重启服务
                       echo "🔄 Restarting application..."
 
-                      # 假设使用 systemd 管理服务，服务名为 fiobot
                       if systemctl list-units --full -all | grep -Fq "fiobot.service"; then
                           systemctl restart fiobot
                           echo "✅ Systemd service 'fiobot' restarted."
                       else
                           echo "⚠️ Systemd service 'fiobot' not found."
-                          # 如果使用 nohup 方式，请取消注释以下行：
-                          # pkill -f "python bot.py" || true
-                          # nohup python bot.py > bot.log 2>&1 &
+                          echo "💡 Tip: Update your systemd service to use the virtual environment:"
+                          echo "ExecStart=$TARGET_DIR/.venv/bin/nb run"
                       fi
 
                       echo "🎉 Deployment completed successfully!"
