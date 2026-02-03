@@ -14,7 +14,7 @@ from .config import Config
 __plugin_meta__ = PluginMetadata(
     name="B站视频下载",
     description="解析B站视频链接或BV号，下载并发送视频，支持音频提取功能",
-    usage="直接发送包含B站链接或BV号的消息即可触发视频下载。使用 /audio <B站链接或BV号> 命令可提取并发送音频文件。",
+    usage="直接发送包含B站链接或BV号的消息即可触发视频下载。使用 /audio <B站链接或BV号> 命令可提取并发送音频下载链接。",
     config=Config,
 )
 
@@ -147,6 +147,29 @@ async def extract_audio(video_data: bytes, output_format: str = "mp3") -> Option
             pass
         return None
 
+async def upload_file(file_data: bytes, filename: str) -> Optional[str]:
+    """上传文件到临时存储服务并返回下载链接"""
+    try:
+        # 使用catbox.moe作为临时存储服务
+        url = "https://catbox.moe/user/api.php"
+        data = {
+            "reqtype": "fileupload",
+            "userhash": "",  # 无需登录
+        }
+        files = {
+            "fileToUpload": (filename, file_data)
+        }
+        
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(url, data=data, files=files)
+            if resp.status_code == 200:
+                return resp.text.strip()
+            else:
+                logger.error(f"上传文件失败，状态码: {resp.status_code}")
+    except Exception as e:
+        logger.error(f"上传文件异常: {e}")
+    return None
+
 @bili.handle()
 async def handle_bili(bot: Bot, event: MessageEvent, state: T_State):
     msg_text = event.get_plaintext()
@@ -232,9 +255,15 @@ async def handle_bili_audio(bot: Bot, event: MessageEvent, state: T_State, arg: 
         if not audio_data:
             await bili_audio.finish("提取音频失败")
 
-        # 7. 发送音频文件
+        # 7. 上传音频文件并获取下载链接
         filename = f"{title}.{plugin_config.bili_audio_format}"
-        await bili_audio.send(Message(MessageSegment.record(audio_data, magic=False, cache=False)))
+        await bili_audio.send(Message(MessageSegment.text(f"正在上传音频文件：{filename}")))
+        download_url = await upload_file(audio_data, filename)
+        if not download_url:
+            await bili_audio.finish("上传音频文件失败")
+
+        # 8. 发送下载链接
+        await bili_audio.send(Message(MessageSegment.text(f"音频提取成功！\n文件名：{filename}\n下载链接：{download_url}")))
 
     except Exception as e:
         logger.error(f"B站音频处理异常: {e}")
