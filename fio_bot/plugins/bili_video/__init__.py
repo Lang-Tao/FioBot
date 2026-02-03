@@ -234,7 +234,7 @@ async def handle_bili_audio(bot: Bot, event: MessageEvent, state: T_State, arg: 
 
         # 7. 发送音频文件
         filename = f"{title}.{plugin_config.bili_audio_format}"
-        await bili_audio.send(Message(MessageSegment.file(audio_data, name=filename)))
+        await bili_audio.send(Message(MessageSegment.record(audio_data, magic=False, cache=False)))
 
     except Exception as e:
         logger.error(f"B站音频处理异常: {e}")
