@@ -14,7 +14,7 @@ from .config import Config
 __plugin_meta__ = PluginMetadata(
     name="B站视频下载",
     description="解析B站视频链接或BV号，下载并发送视频，支持音频提取功能",
-    usage="直接发送包含B站链接或BV号的消息即可触发视频下载。使用 /audio <B站链接或BV号> 命令可提取并发送音频。",
+    usage="直接发送包含B站链接或BV号的消息即可触发视频下载。使用 /audio <B站链接或BV号> 命令可提取并发送音频文件。",
     config=Config,
 )
 
@@ -232,8 +232,9 @@ async def handle_bili_audio(bot: Bot, event: MessageEvent, state: T_State, arg: 
         if not audio_data:
             await bili_audio.finish("提取音频失败")
 
-        # 7. 发送音频
-        await bili_audio.send(Message(MessageSegment.record(audio_data)))
+        # 7. 发送音频文件
+        filename = f"{title}.{plugin_config.bili_audio_format}"
+        await bili_audio.send(Message(MessageSegment.file(audio_data, name=filename)))
 
     except Exception as e:
         logger.error(f"B站音频处理异常: {e}")
