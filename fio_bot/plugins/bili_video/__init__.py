@@ -3,12 +3,14 @@ import json
 import httpx
 import io
 import subprocess
+import traceback
 from typing import Optional, Dict, Any
 from nonebot import on_regex, on_command, logger, get_plugin_config
 from nonebot.plugin import PluginMetadata
 from nonebot.adapters.onebot.v11 import Message, MessageSegment, Bot, MessageEvent
 from nonebot.typing import T_State
 from nonebot.params import CommandArg
+from nonebot.exception import FinishedException
 from .config import Config
 
 __plugin_meta__ = PluginMetadata(
@@ -166,14 +168,14 @@ async def upload_file(file_data: bytes, filename: str) -> Optional[str]:
             "Referer": "https://catbox.moe/",
         }
         
-        async with httpx.AsyncClient(headers=upload_headers, timeout=30) as client:
+        async with httpx.AsyncClient(headers=upload_headers, timeout=30, trust_env=True) as client:
             resp = await client.post(url, data=data, files=files)
             if resp.status_code == 200:
                 return resp.text.strip()
             else:
                 logger.error(f"上传文件失败，状态码: {resp.status_code}, 响应: {resp.text}")
     except Exception as e:
-        logger.error(f"上传文件异常: {e}")
+        logger.error(f"上传文件异常: {traceback.format_exc()}")
     return None
 
 @bili.handle()
@@ -214,6 +216,8 @@ async def handle_bili(bot: Bot, event: MessageEvent, state: T_State):
         # 6. 发送视频
         await bili.send(Message(MessageSegment.text(f"视频下载好啦喵~") + MessageSegment.video(video_data)))
 
+    except FinishedException:
+        raise
     except Exception as e:
         logger.error(f"B站视频处理异常: {e}")
         await bili.finish(f"处理视频失败惹喵~ {e}")
@@ -267,6 +271,8 @@ async def handle_bili_audio(bot: Bot, event: MessageEvent, state: T_State, arg: 
         # 8. 发送下载链接
         await bili_audio.send(Message(MessageSegment.text(f"音频提取好啦喵~ {download_url}")))
 
+    except FinishedException:
+        raise
     except Exception as e:
         logger.error(f"B站音频处理异常: {e}")
         await bili_audio.finish(f"处理音频失败惹喵~ {e}")
