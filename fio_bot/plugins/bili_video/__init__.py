@@ -157,15 +157,21 @@ async def upload_file(file_data: bytes, filename: str) -> Optional[str]:
             "userhash": "",  # 无需登录
         }
         files = {
-            "fileToUpload": (filename, file_data)
+            "fileToUpload": (filename, file_data, "audio/mpeg")
         }
         
-        async with httpx.AsyncClient(timeout=30) as client:
+        # 添加headers
+        upload_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Referer": "https://catbox.moe/",
+        }
+        
+        async with httpx.AsyncClient(headers=upload_headers, timeout=30) as client:
             resp = await client.post(url, data=data, files=files)
             if resp.status_code == 200:
                 return resp.text.strip()
             else:
-                logger.error(f"上传文件失败，状态码: {resp.status_code}")
+                logger.error(f"上传文件失败，状态码: {resp.status_code}, 响应: {resp.text}")
     except Exception as e:
         logger.error(f"上传文件异常: {e}")
     return None
@@ -176,42 +182,41 @@ async def handle_bili(bot: Bot, event: MessageEvent, state: T_State):
     bvid = await get_bvid_from_input(msg_text)
     
     if not bvid:
-        await bili.finish("未识别到有效的B站BV号")
+        await bili.finish("没有找到有效的B站BV号喵~")
 
     try:
         # 1. 获取视频信息
         video_info = await get_video_info(bvid)
         if not video_info:
-            await bili.finish("获取视频信息失败")
+            await bili.finish("获取视频信息失败惹喵~")
 
         # 2. 检查视频时长
         duration = video_info.get("duration", 0)
         if duration > plugin_config.bili_video_max_duration:
-            await bili.finish(f"视频时长过长（{duration}秒），超过最大限制（{plugin_config.bili_video_max_duration}秒）")
+            await bili.finish(f"视频时长太长啦（{duration}秒），超过最大限制（{plugin_config.bili_video_max_duration}秒）喵~")
 
         # 3. 获取视频信息
         title = video_info.get("title", "无标题")
         cid = video_info.get("cid")
         if not cid:
-            await bili.finish("获取视频CID失败")
+            await bili.finish("获取视频CID失败惹喵~")
 
         # 4. 获取视频下载链接
         video_url = await get_video_url(bvid, cid, plugin_config.bili_video_quality)
         if not video_url:
-            await bili.finish("获取视频下载链接失败")
+            await bili.finish("获取视频下载链接失败惹喵~")
 
         # 5. 下载视频
-        await bili.send(Message(MessageSegment.text(f"正在下载视频：{title}")))
         video_data = await download_video(video_url)
         if not video_data:
-            await bili.finish("下载视频失败")
+            await bili.finish("下载视频失败惹喵~")
 
         # 6. 发送视频
-        await bili.send(Message(MessageSegment.video(video_data)))
+        await bili.send(Message(MessageSegment.text(f"视频下载好啦喵~") + MessageSegment.video(video_data)))
 
     except Exception as e:
         logger.error(f"B站视频处理异常: {e}")
-        await bili.finish(f"处理视频失败：{e}")
+        await bili.finish(f"处理视频失败惹喵~ {e}")
 
 @bili_audio.handle()
 async def handle_bili_audio(bot: Bot, event: MessageEvent, state: T_State, arg: Message = CommandArg()):
@@ -219,52 +224,49 @@ async def handle_bili_audio(bot: Bot, event: MessageEvent, state: T_State, arg: 
     bvid = await get_bvid_from_input(msg_text)
     
     if not bvid:
-        await bili_audio.finish("未识别到有效的B站BV号")
+        await bili_audio.finish("没有找到有效的B站BV号喵~")
 
     try:
         # 1. 获取视频信息
         video_info = await get_video_info(bvid)
         if not video_info:
-            await bili_audio.finish("获取视频信息失败")
+            await bili_audio.finish("获取视频信息失败惹喵~")
 
         # 2. 检查音频时长
         duration = video_info.get("duration", 0)
         if duration > plugin_config.bili_audio_max_duration:
-            await bili_audio.finish(f"音频时长过长（{duration}秒），超过最大限制（{plugin_config.bili_audio_max_duration}秒）")
+            await bili_audio.finish(f"音频时长太长啦（{duration}秒），超过最大限制（{plugin_config.bili_audio_max_duration}秒）喵~")
 
         # 3. 获取视频信息
         title = video_info.get("title", "无标题")
         cid = video_info.get("cid")
         if not cid:
-            await bili_audio.finish("获取视频CID失败")
+            await bili_audio.finish("获取视频CID失败惹喵~")
 
         # 4. 获取视频下载链接
         video_url = await get_video_url(bvid, cid, plugin_config.bili_video_quality)
         if not video_url:
-            await bili_audio.finish("获取视频下载链接失败")
+            await bili_audio.finish("获取视频下载链接失败惹喵~")
 
         # 5. 下载视频
-        await bili_audio.send(Message(MessageSegment.text(f"正在下载视频：{title}")))
         video_data = await download_video(video_url)
         if not video_data:
-            await bili_audio.finish("下载视频失败")
+            await bili_audio.finish("下载视频失败惹喵~")
 
         # 6. 提取音频
-        await bili_audio.send(Message(MessageSegment.text(f"正在提取音频：{title}")))
         audio_data = await extract_audio(video_data, plugin_config.bili_audio_format)
         if not audio_data:
-            await bili_audio.finish("提取音频失败")
+            await bili_audio.finish("提取音频失败惹喵~")
 
         # 7. 上传音频文件并获取下载链接
         filename = f"{title}.{plugin_config.bili_audio_format}"
-        await bili_audio.send(Message(MessageSegment.text(f"正在上传音频文件：{filename}")))
         download_url = await upload_file(audio_data, filename)
         if not download_url:
-            await bili_audio.finish("上传音频文件失败")
+            await bili_audio.finish("上传音频文件失败惹喵~")
 
         # 8. 发送下载链接
-        await bili_audio.send(Message(MessageSegment.text(f"音频提取成功！\n文件名：{filename}\n下载链接：{download_url}")))
+        await bili_audio.send(Message(MessageSegment.text(f"音频提取好啦喵~ {download_url}")))
 
     except Exception as e:
         logger.error(f"B站音频处理异常: {e}")
-        await bili_audio.finish(f"处理音频失败：{e}")
+        await bili_audio.finish(f"处理音频失败惹喵~ {e}")
