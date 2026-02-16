@@ -9,7 +9,7 @@ dependencies = [
     "nonebot2[httpx]>=2.4.4",
     "nonebot2[websockets]>=2.4.4",
     "nonebot-adapter-onebot>=2.4.6",
-    "nonebot-plugin-skland>=0.5.5",
+    "qrcode[pil]>=7.0",
 ]
 
 [tool.setuptools]
@@ -25,4 +25,3 @@ nonebot-adapter-onebot = [{name = "OneBot V11", module_name = "nonebot.adapters.
 
 [tool.nonebot.plugins]
 "@local" = []
-nonebot-plugin-skland = ["nonebot_plugin_skland"]

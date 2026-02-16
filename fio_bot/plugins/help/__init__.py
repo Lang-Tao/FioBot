@@ -14,24 +14,28 @@ config = get_plugin_config(Config)
 
 from nonebot import on_command
 
-help = on_command("help", aliases={"帮助"}, priority=10, block=True)
+help = on_command("fiop", aliases={"fio帮助"}, priority=10, block=True)
 
 @help.handle()
 async def handle_function():
     HELP_TEXT = (
-    "指令列表：\n"
-    "skland：角色信息卡片\n"
-    "角色更新：更新森空岛绑定的角色信息\n"
-    "扫码绑定：获取二维码，用于扫码绑定森空岛账号\n"
-    "明日方舟签到：为当前用户绑定的所有角色签到\n"
-    "xx肉鸽：肉鸽战绩查询\n"
-    "战绩详情 <战绩ID>：根据 ID 查询最近战绩详情 (可加 -f 查询收藏)\n"
-    "skland gacha：查询明日方舟抽卡记录 \n"
-    "skland import <url>：导入明日方舟抽卡记录，支持导入小黑盒记录的抽卡记录\n"
-    # "skland bind <token>：绑定森空岛账号的 Token/Cred\n"
-    # "skland bind -u <token>：更新已绑定的 Token 或 Cred\n"
-    # "skland qrcode：获取二维码，用于扫码绑定森空岛账号\n"
-    # "skland arksign -u <uid>：指定 UID 的角色进行签到\n"
-    # "skland arksign status：查询个人自动签到服务的状态\n"
-)
+        "📋 指令列表：\n"
+        "\n"
+        "【🎮 森空岛】\n"
+        "  森空岛绑定 <token/cred> - 绑定账号（私聊）\n"
+        "  扫码绑定 - 二维码扫码绑定\n"
+        "  明日方舟签到 / 方舟签到 - 为绑定角色签到\n"
+        "  角色列表 - 查看绑定的角色\n"
+        "  角色更新 - 刷新角色绑定信息\n"
+        "\n"
+        "【🎲 随机功能】\n"
+        "  roll / fioll <选项1> <选项2> ... - 帮你做选择（空格或逗号分隔）\n"
+        "\n"
+        "【📺 B站视频】\n"
+        "  发送B站链接或BV号 - 自动解析并发送三分钟以内的视频\n"
+        "  audio <B站链接或BV号> - 提取并发送音频下载链接\n"
+        "\n"
+        "【📷 小红书】\n"
+        "  发送小红书链接 - 自动解析并发送无水印原图\n"
+    )
     await help.finish(HELP_TEXT)
