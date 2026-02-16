@@ -14,7 +14,7 @@ config = get_plugin_config(Config)
 
 from nonebot import on_command
 
-help = on_command("fiop", aliases={"fio帮助"}, priority=10, block=True)
+help = on_command("fiop", aliases={"fio帮助"}, priority=10000, block=True)
 
 @help.handle()
 async def handle_function():

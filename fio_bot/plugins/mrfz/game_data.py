@@ -58,9 +58,49 @@ def _ensure_dir():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# 备用数据源（主 URL 失败时自动降级）
+_FALLBACK_MIRRORS = [
+    # jsdelivr CDN
+    "https://cdn.jsdelivr.net/gh/Kengxxiao/ArknightsGameData@master/zh_CN/gamedata/excel/{file}",
+    # githubfast 镜像
+    "https://githubfast.com/Kengxxiao/ArknightsGameData/raw/master/zh_CN/gamedata/excel/{file}",
+    # GitHub 原始地址
+    "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata/excel/{file}",
+]
+
+
+async def _download_file(
+    client: httpx.AsyncClient, url: str, filename: str, dest: Path
+) -> None:
+    """下载单个文件，主 URL 失败时自动尝试备用镜像"""
+    urls_to_try = [url] + [m.format(file=filename) for m in _FALLBACK_MIRRORS]
+    # 去重保持顺序
+    seen = set()
+    unique_urls = []
+    for u in urls_to_try:
+        if u not in seen:
+            seen.add(u)
+            unique_urls.append(u)
+
+    last_error = None
+    for i, try_url in enumerate(unique_urls):
+        try:
+            logger.info(f"正在下载 {filename} ... ({try_url})")
+            resp = await client.get(try_url)
+            resp.raise_for_status()
+            dest.write_bytes(resp.content)
+            logger.info(f"{filename} 下载完成 ({len(resp.content)} bytes)")
+            return
+        except Exception as e:
+            last_error = e
+            if i < len(unique_urls) - 1:
+                logger.warning(f"{filename} 从 {try_url} 下载失败: {e}，尝试下一个源...")
+    raise last_error  # type: ignore
+
+
 async def download_game_data(char_url: str, gacha_url: str, force: bool = False):
     """
-    下载游戏数据并缓存到本地
+    下载游戏数据并缓存到本地，支持多源自动降级
 
     Args:
         char_url: character_table.json 下载地址
@@ -73,20 +113,12 @@ async def download_game_data(char_url: str, gacha_url: str, force: bool = False)
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
 
-    async with httpx.AsyncClient(timeout=60, headers=headers, follow_redirects=True) as client:
+    async with httpx.AsyncClient(timeout=120, headers=headers, follow_redirects=True) as client:
         if force or not CHAR_TABLE_FILE.exists():
-            logger.info("正在下载 character_table.json ...")
-            resp = await client.get(char_url)
-            resp.raise_for_status()
-            CHAR_TABLE_FILE.write_bytes(resp.content)
-            logger.info(f"character_table.json 下载完成 ({len(resp.content)} bytes)")
+            await _download_file(client, char_url, "character_table.json", CHAR_TABLE_FILE)
 
         if force or not GACHA_TABLE_FILE.exists():
-            logger.info("正在下载 gacha_table.json ...")
-            resp = await client.get(gacha_url)
-            resp.raise_for_status()
-            GACHA_TABLE_FILE.write_bytes(resp.content)
-            logger.info(f"gacha_table.json 下载完成 ({len(resp.content)} bytes)")
+            await _download_file(client, gacha_url, "gacha_table.json", GACHA_TABLE_FILE)
 
 
 def is_data_ready() -> bool:

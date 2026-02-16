@@ -150,5 +150,5 @@ async def handle_update(event: MessageEvent):
             await update_cmd.finish("数据下载成功但解析失败喵，请检查日志")
 
     except Exception as e:
-        logger.error(f"更新游戏数据失败: {e}")
+        logger.error(f"更新游戏数据失败: {e}", exc_info=True)
         await update_cmd.finish(f"更新失败喵：{e}")
