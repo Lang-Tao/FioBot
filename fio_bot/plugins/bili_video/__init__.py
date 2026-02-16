@@ -195,7 +195,7 @@ async def handle_bili(bot: Bot, event: MessageEvent, state: T_State):
         duration = video_info.get("duration", 0)
         if duration > plugin_config.bili_video_max_duration:
             logger.warning(f"视频时长过长: {duration}秒")
-            await bili.finish("获取失败了喵...")
+            await bili.finish("视频太长了喵")
 
         # 3. 获取视频信息
         title = video_info.get("title", "无标题")
@@ -247,7 +247,7 @@ async def handle_bili_audio(bot: Bot, event: MessageEvent, state: T_State, arg: 
         duration = video_info.get("duration", 0)
         if duration > plugin_config.bili_audio_max_duration:
             logger.warning(f"音频时长过长: {duration}秒")
-            await bili_audio.finish("获取失败了喵...")
+            await bili_audio.finish("视频太长了喵")
 
         # 3. 获取视频信息
         title = video_info.get("title", "无标题")
