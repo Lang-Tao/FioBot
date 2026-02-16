@@ -37,5 +37,9 @@ async def handle_function():
         "\n"
         "【📷 小红书】\n"
         "  发送小红书链接 - 自动解析并发送无水印原图\n"
+        "\n"
+        "【🏷️ 公招识别】\n"
+        "  公招 <标签1> <标签2> ... - 计算最优公招组合\n"
+        "  公招更新 - 更新游戏数据\n"
     )
     await help.finish(HELP_TEXT)
