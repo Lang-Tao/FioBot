@@ -119,21 +119,24 @@ def parse_recruit_pool(gacha_table: dict) -> set[str]:
     从 recruitDetail 解析当前公招可用干员名单
 
     recruitDetail 格式举例:
-      ★\\n干员1/干员2\\n\\n★★\\n干员3/干员4
+      ★\\n<@rc.eml>干员1</> / 干员2\\n★★\\n干员3/干员4
     """
     recruit_detail = gacha_table.get("recruitDetail", "")
-    # 去掉星号和空行，提取干员名
     names = set()
     for line in recruit_detail.replace("\\n", "\n").split("\n"):
         line = line.strip()
-        if not line or line.startswith("★") or line.startswith("<"):
+        if not line:
             continue
-        # 去除 html 标签
-        line = re.sub(r"<[^>]+>", "", line)
+        # 去除所有富文本标签 <@rc.xxx> </> 等
+        line = re.sub(r"<[^>]*>", "", line)
+        line = line.strip()
+        # 跳过纯星号行、分隔线、空行
+        if not line or re.match(r'^[★\-─]+$', line):
+            continue
         line = line.replace("/", " ").replace("／", " ")
         for name in line.split():
             name = name.strip()
-            if name and name != "-":
+            if name and name != "-" and not re.match(r'^★+$', name):
                 names.add(name)
     return names
 
