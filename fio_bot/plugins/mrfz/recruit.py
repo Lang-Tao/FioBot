@@ -4,6 +4,7 @@
 """
 
 import itertools
+import re
 from typing import Optional
 
 
@@ -41,6 +42,54 @@ TAG_ALIASES = {
     "男": "男性干员", "女": "女性干员",
     "新手": "新手",
 }
+
+
+def smart_split_tags(text: str, valid_tags: list[str]) -> list[str]:
+    """
+    智能分词：支持用户输入无空格的标签连写（如"高资近卫输出"）
+
+    1. 先按分隔符拆分
+    2. 对无法直接识别的长段，尝试从已知别名/标签中贪婪匹配拆分
+    """
+    # 先按常规分隔符拆
+    parts = re.split(r"[,，\s]+", text.strip())
+    parts = [p.strip() for p in parts if p.strip()]
+
+    # 构建所有可识别的关键词（别名 + 完整标签），按长度从长到短排序
+    all_keywords = sorted(
+        set(list(TAG_ALIASES.keys()) + list(valid_tags)),
+        key=len,
+        reverse=True,
+    )
+
+    result = []
+    for part in parts:
+        # 如果这个片段能直接被识别（在别名或合法标签中），直接保留
+        if part in TAG_ALIASES or part in valid_tags:
+            result.append(part)
+            continue
+
+        # 尝试贪婪拆分
+        remaining = part
+        found_any = False
+        while remaining:
+            matched = False
+            for kw in all_keywords:
+                if remaining.startswith(kw):
+                    result.append(kw)
+                    remaining = remaining[len(kw):]
+                    matched = True
+                    found_any = True
+                    break
+            if not matched:
+                # 跳过一个字符继续尝试
+                remaining = remaining[1:]
+
+        # 如果完全没匹配到，保留原始片段让 normalize_tags 处理
+        if not found_any:
+            result.append(part)
+
+    return result
 
 
 def normalize_tags(raw_tags: list[str], valid_tags: list[str]) -> list[str]:

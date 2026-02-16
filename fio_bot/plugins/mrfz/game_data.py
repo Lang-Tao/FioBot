@@ -30,6 +30,27 @@ PROFESSION_MAP = {
     "SPECIAL": "特种干员",
 }
 
+# 稀有度映射：支持新版 TIER_X 字符串和旧版数字格式
+RARITY_MAP = {
+    "TIER_1": 0, "TIER_2": 1, "TIER_3": 2,
+    "TIER_4": 3, "TIER_5": 4, "TIER_6": 5,
+}
+
+
+def parse_rarity(raw_rarity) -> int:
+    """将 rarity 字段统一转换为 0-based 数字 (0=1★, 5=6★)"""
+    if isinstance(raw_rarity, int):
+        return raw_rarity
+    if isinstance(raw_rarity, str):
+        if raw_rarity in RARITY_MAP:
+            return RARITY_MAP[raw_rarity]
+        # 尝试直接转数字
+        try:
+            return int(raw_rarity)
+        except ValueError:
+            pass
+    return -1
+
 # ==================== 数据下载与缓存 ====================
 
 
@@ -143,7 +164,9 @@ def build_recruit_data(
         if not name or name not in recruit_pool:
             continue
 
-        rarity = char_data.get("rarity", 0)  # 0-based: 0=1★, 5=6★
+        rarity = parse_rarity(char_data.get("rarity", 0))  # 0-based: 0=1★, 5=6★
+        if rarity < 0:
+            continue
         profession = char_data.get("profession", "")
         position = char_data.get("position", "")
         tag_list = char_data.get("tagList") or []

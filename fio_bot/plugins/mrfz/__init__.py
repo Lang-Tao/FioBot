@@ -21,6 +21,7 @@ from .game_data import (
 )
 from .recruit import (
     normalize_tags,
+    smart_split_tags,
     find_recruit_combinations,
     format_results,
 )
@@ -94,9 +95,8 @@ async def handle_recruit(event: MessageEvent, args: Message = CommandArg()):
     if _cached_operators is None or _cached_valid_tags is None:
         await recruit_cmd.finish("游戏数据加载失败喵，请尝试「公招更新」")
 
-    # 解析用户输入的标签
-    raw_tags = re.split(r"[,，\s]+", text)
-    raw_tags = [t.strip() for t in raw_tags if t.strip()]
+    # 解析用户输入的标签（支持无空格连写）
+    raw_tags = smart_split_tags(text, _cached_valid_tags)
 
     if not raw_tags:
         await recruit_cmd.finish("没有识别到标签喵~")
