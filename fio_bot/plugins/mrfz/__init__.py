@@ -13,6 +13,7 @@ from nonebot import on_command, logger, get_plugin_config
 from nonebot.plugin import PluginMetadata
 from nonebot.adapters.onebot.v11 import Message, MessageSegment, MessageEvent
 from nonebot.params import CommandArg
+from nonebot.exception import MatcherException
 
 from .config import Config
 from .game_data import (
@@ -64,8 +65,8 @@ def _load_cache():
 
 # ==================== 命令定义 ====================
 
-recruit_cmd = on_command("公招", aliases={"公开招募", "gk", "gz"}, priority=10, block=True)
-update_cmd = on_command("公招更新", priority=10, block=True)
+recruit_cmd = on_command("/公招", aliases={"/公开招募", "/gk", "/gz"}, priority=10, block=True)
+update_cmd = on_command("/公招更新", priority=10, block=True)
 
 
 # ==================== 辅助函数 ====================
@@ -138,6 +139,8 @@ async def handle_recruit(event: MessageEvent, args: Message = CommandArg()):
                 plugin_config.mrfz_character_table_url,
                 plugin_config.mrfz_gacha_table_url,
             )
+        except MatcherException:
+            raise
         except Exception as e:
             logger.error(f"下载游戏数据失败: {e}")
             await recruit_cmd.finish(f"下载游戏数据失败喵：{e}")
@@ -161,6 +164,8 @@ async def handle_recruit(event: MessageEvent, args: Message = CommandArg()):
         try:
             # 下载图片
             img_data = await download_image(image_url)
+        except MatcherException:
+            raise
         except Exception as e:
             logger.error(f"下载公招截图失败: {e}")
             await recruit_cmd.finish(f"下载图片失败喵：{e}")
@@ -172,6 +177,8 @@ async def handle_recruit(event: MessageEvent, args: Message = CommandArg()):
                 plugin_config.baidu_ocr_api_key,
                 plugin_config.baidu_ocr_secret_key,
             )
+        except MatcherException:
+            raise
         except Exception as e:
             logger.error(f"OCR 识别失败: {e}")
             await recruit_cmd.finish(f"OCR 识别失败喵：{e}")
@@ -234,17 +241,17 @@ async def handle_update(event: MessageEvent):
             plugin_config.mrfz_gacha_table_url,
             force=True,
         )
-        _load_cache()
-
-        if _cached_operators is not None:
-            await update_cmd.finish(
-                f"游戏数据更新成功喵！\n"
-                f"可招募干员：{len(_cached_operators)} 个\n"
-                f"标签数：{len(_cached_valid_tags or [])} 个"
-            )
-        else:
-            await update_cmd.finish("数据下载成功但解析失败喵，请检查日志")
-
     except Exception as e:
         logger.error(f"更新游戏数据失败: {e}", exc_info=True)
         await update_cmd.finish(f"更新失败喵：{e}")
+
+    _load_cache()
+
+    if _cached_operators is not None:
+        await update_cmd.finish(
+            f"游戏数据更新成功喵！\n"
+            f"可招募干员：{len(_cached_operators)} 个\n"
+            f"标签数：{len(_cached_valid_tags or [])} 个"
+        )
+    else:
+        await update_cmd.finish("数据下载成功但解析失败喵，请检查日志")
