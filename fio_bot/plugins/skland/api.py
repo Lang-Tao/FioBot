@@ -6,14 +6,14 @@
 
 import hmac
 import json
+import time
 import hashlib
 from typing import Literal, Optional
-from datetime import datetime
 from urllib.parse import urlparse
 from dataclasses import dataclass
 
 import httpx
-from nonebot import logger
+from nonebot import logger, get_driver
 
 
 # ==================== API 常量 ====================
@@ -21,6 +21,39 @@ from nonebot import logger
 SKLAND_BASE_URL = "https://zonai.skland.com/api/v1"
 SKLAND_APP_CODE = "4ca99fa6b56cc2ba"
 WEB_APP_CODE = "be36d44aa36bfb5b"
+
+# 服务器时间偏移（秒），通过 sync_server_time() 校准
+_server_time_offset: int = 0
+
+
+def get_server_timestamp() -> int:
+    """获取校准后的时间戳"""
+    return int(time.time()) + _server_time_offset
+
+
+async def sync_server_time():
+    """与森空岛服务器同步时间，计算偏移量"""
+    global _server_time_offset
+    try:
+        async with httpx.AsyncClient() as client:
+            before = int(time.time())
+            resp = await client.get(f"{SKLAND_BASE_URL}/auth/refresh")
+            after = int(time.time())
+            server_ts = int(resp.json().get("timestamp", before))
+            local_ts = (before + after) // 2
+            _server_time_offset = server_ts - local_ts
+            logger.info(f"森空岛时间同步完成，偏移: {_server_time_offset} 秒")
+    except Exception as e:
+        logger.warning(f"森空岛时间同步失败: {e}，使用本地时间")
+
+
+# 启动时自动同步时间
+driver = get_driver()
+
+
+@driver.on_startup
+async def _sync_time_on_startup():
+    await sync_server_time()
 
 
 # ==================== 异常定义 ====================
@@ -195,7 +228,7 @@ class SklandAPI:
         签名算法: HMAC-SHA256 → MD5
         secret = "{path}{query_params}{timestamp}{header_ca_str}"
         """
-        timestamp = int(datetime.now().timestamp()) - 1
+        timestamp = get_server_timestamp() - 1
         header_ca = {**cls._header_for_sign, "timestamp": str(timestamp)}
         parsed_url = urlparse(url)
 
@@ -241,6 +274,7 @@ class SklandAPI:
                     headers=cls.get_sign_header(cred, binding_url, method="get"),
                 )
                 data = response.json()
+                logger.debug(f"获取绑定角色原始响应: {data}")
                 cls._check_response(data, "获取绑定角色失败")
                 return data["data"]["list"]
             except httpx.HTTPError as e:

@@ -34,6 +34,7 @@ from .api import (
     RequestException,
     LoginException,
     UnauthorizedException,
+    sync_server_time,
 )
 from . import storage
 
@@ -55,6 +56,43 @@ __plugin_meta__ = PluginMetadata(
 # ==================== 辅助函数 ====================
 
 
+async def refresh_cred_token(user_data: dict) -> CRED | None:
+    """
+    刷新 cred_token（用于 UnauthorizedException）
+
+    当签名认证过期时调用，只需刷新 token 即可
+    """
+    try:
+        new_token = await SklandLoginAPI.refresh_token(user_data["cred"])
+        user_data["cred_token"] = new_token
+        logger.info("cred_token 已自动刷新")
+        return CRED(cred=user_data["cred"], token=new_token)
+    except SklandException as e:
+        logger.warning(f"刷新 cred_token 失败: {e}")
+        return None
+
+
+async def refresh_cred_by_access_token(user_data: dict) -> CRED | None:
+    """
+    用 access_token 完全刷新 cred（用于 LoginException 或 cred_token 刷新失败）
+    """
+    if not user_data.get("access_token"):
+        logger.warning("没有 access_token，无法自动刷新 cred")
+        return None
+
+    try:
+        grant_code = await SklandLoginAPI.get_grant_code(user_data["access_token"], 0)
+        new_cred = await SklandLoginAPI.get_cred(grant_code)
+        user_data["cred"] = new_cred.cred
+        user_data["cred_token"] = new_cred.token
+        user_data["user_id"] = new_cred.userId
+        logger.info("已通过 access_token 刷新 cred")
+        return new_cred
+    except SklandException as e:
+        logger.warning(f"通过 access_token 刷新 cred 失败: {e}")
+        return None
+
+
 async def refresh_cred_if_needed(user_data: dict) -> CRED | None:
     """
     尝试刷新过期凭据
@@ -62,45 +100,50 @@ async def refresh_cred_if_needed(user_data: dict) -> CRED | None:
     1. 先尝试 refresh_token 刷新 cred_token
     2. 失败则尝试用 access_token 重新走完整流程
     """
-    try:
-        new_token = await SklandLoginAPI.refresh_token(user_data["cred"])
-        user_data["cred_token"] = new_token
-        return CRED(cred=user_data["cred"], token=new_token)
-    except SklandException:
-        pass
-
-    # 用 access_token 完全刷新
-    if user_data.get("access_token"):
-        try:
-            grant_code = await SklandLoginAPI.get_grant_code(user_data["access_token"], 0)
-            new_cred = await SklandLoginAPI.get_cred(grant_code)
-            user_data["cred"] = new_cred.cred
-            user_data["cred_token"] = new_cred.token
-            user_data["user_id"] = new_cred.userId
-            return new_cred
-        except SklandException:
-            pass
-
-    return None
+    new_cred = await refresh_cred_token(user_data)
+    if new_cred:
+        return new_cred
+    return await refresh_cred_by_access_token(user_data)
 
 
 async def fetch_and_save_characters(user_id: str, user_data: dict, cred: CRED) -> list[dict]:
-    """获取并保存角色绑定信息"""
+    """获取并保存角色绑定信息
+
+    参考 FrostN0v0/nonebot-plugin-skland 的绑定逻辑：
+    - 当 binding 下有 roles 时，使用 role 的 roleId/serverId/nickname
+    - 当 roles 为空时，回退使用 binding 级别的 uid/channelMasterId/nickName
+    """
     binding_list = await SklandAPI.get_binding(cred)
     characters = []
     for app in binding_list:
         app_code = app.get("appCode", "")
         for binding in app.get("bindingList", []):
-            for role in binding.get("roles", []):
+            roles = binding.get("roles", [])
+            if roles:
+                # 有 roles 数据时，使用 role 级别的信息
+                for role in roles:
+                    characters.append({
+                        "uid": role.get("roleId", ""),
+                        "nickname": role.get("nickname", ""),
+                        "app_code": app_code,
+                        "channel_master_id": str(role.get("serverId", binding.get("channelMasterId", ""))),
+                        "is_default": len(roles) == 1 or role.get("isDefault", False),
+                        "server_name": role.get("serverName", binding.get("channelName", "")),
+                        "level": role.get("level", 0),
+                    })
+            else:
+                # roles 为空时，回退到 binding 级别的信息
                 characters.append({
-                    "uid": role.get("roleId", ""),
-                    "nickname": role.get("nickname", ""),
+                    "uid": binding.get("uid", ""),
+                    "nickname": binding.get("nickName", ""),
                     "app_code": app_code,
                     "channel_master_id": str(binding.get("channelMasterId", "")),
-                    "is_default": role.get("isDefault", False),
+                    "is_default": len(app.get("bindingList", [])) == 1 or binding.get("isDefault", False),
                     "server_name": binding.get("channelName", ""),
-                    "level": role.get("level", 0),
+                    "level": 0,
                 })
+    logger.info(f"获取到 {len(characters)} 个角色绑定信息")
+    logger.debug(f"角色列表: {characters}")
     user_data["characters"] = characters
     storage.save_user(user_id, user_data)
     return characters
@@ -113,6 +156,26 @@ def format_ark_chars(ark_chars: list[dict]) -> str:
         server = "官服" if c["channel_master_id"] == "1" else "B服"
         lines.append(f"  {c['nickname']} | Lv.{c.get('level', '?')} | {server}")
     return "\n".join(lines)
+
+
+def _format_sign_result(nickname: str, sign_data: dict) -> str:
+    """格式化单个角色的签到结果"""
+    awards = sign_data.get("awards", [])
+    if awards:
+        award_text = ", ".join(
+            f"{a.get('resource', {}).get('name', '未知')} x{a.get('count', 0)}"
+            for a in awards
+        )
+        return f"✅ {nickname}：签到成功！\n   获得：{award_text}"
+    return f"✅ {nickname}：签到成功！"
+
+
+def _format_sign_error(nickname: str, error: Exception) -> str:
+    """格式化签到错误信息"""
+    error_msg = str(error)
+    if "请勿重复签到" in error_msg:
+        return f"ℹ️ {nickname}：今日已签到"
+    return f"❌ {nickname}：{error_msg}"
 
 
 # ==================== 命令定义 ====================
@@ -215,7 +278,8 @@ async def handle_qrcode(bot: Bot, event: MessageEvent):
 
         await qrcode_cmd.send(
             Message(
-                MessageSegment.text("请使用森空岛APP扫描下方二维码绑定账号喵~\n有效时间两分钟，请勿扫描他人二维码！\n")
+                MessageSegment.reply(event.message_id)
+                + MessageSegment.text("请使用森空岛APP扫描下方二维码绑定账号喵~\n有效时间两分钟，请勿扫描他人二维码！\n")
                 + MessageSegment.image(f"base64://{qr_b64}")
             )
         )
@@ -233,7 +297,9 @@ async def handle_qrcode(bot: Bot, event: MessageEvent):
             await asyncio.sleep(2)
 
         if not scan_code:
-            await qrcode_cmd.finish("扫码超时了喵，请重新发起扫码绑定~")
+            await qrcode_cmd.finish(
+                Message(MessageSegment.reply(event.message_id) + MessageSegment.text("扫码超时了喵，请重新发起扫码绑定~"))
+            )
             return
 
         # 扫码成功，完成绑定流程
@@ -257,10 +323,14 @@ async def handle_qrcode(bot: Bot, event: MessageEvent):
         if ark_chars:
             msg += f"\n发现 {len(ark_chars)} 个明日方舟角色：\n{format_ark_chars(ark_chars)}"
 
-        await qrcode_cmd.finish(msg)
+        await qrcode_cmd.finish(
+            Message(MessageSegment.reply(event.message_id) + MessageSegment.text(msg))
+        )
 
     except SklandException as e:
-        await qrcode_cmd.finish(f"扫码绑定失败喵：{e}")
+        await qrcode_cmd.finish(
+            Message(MessageSegment.reply(event.message_id) + MessageSegment.text(f"扫码绑定失败喵：{e}"))
+        )
 
 
 # ==================== 签到 ====================
@@ -283,41 +353,45 @@ async def handle_sign(event: MessageEvent):
     cred = CRED(cred=user_data["cred"], token=user_data["cred_token"])
 
     results = []
+    need_refresh = False  # 标记是否已经尝试刷新过
+
     for char in ark_chars:
         try:
             sign_data = await SklandAPI.ark_sign(cred, char["uid"], char["channel_master_id"])
-            awards = sign_data.get("awards", [])
-            if awards:
-                award_text = ", ".join(
-                    f"{a.get('resource', {}).get('name', '未知')} x{a.get('count', 0)}"
-                    for a in awards
-                )
-                results.append(f"✅ {char['nickname']}：签到成功！\n   获得：{award_text}")
-            else:
-                results.append(f"✅ {char['nickname']}：签到成功！")
+            results.append(_format_sign_result(char["nickname"], sign_data))
         except UnauthorizedException:
-            # 凭据过期，尝试刷新
-            new_cred = await refresh_cred_if_needed(user_data)
-            if new_cred:
-                storage.save_user(user_id, user_data)
-                cred = new_cred
-                try:
-                    sign_data = await SklandAPI.ark_sign(cred, char["uid"], char["channel_master_id"])
-                    awards = sign_data.get("awards", [])
-                    if awards:
-                        award_text = ", ".join(
-                            f"{a.get('resource', {}).get('name', '未知')} x{a.get('count', 0)}"
-                            for a in awards
-                        )
-                        results.append(f"✅ {char['nickname']}：签到成功！\n   获得：{award_text}")
-                    else:
-                        results.append(f"✅ {char['nickname']}：签到成功！")
-                except SklandException as e:
-                    results.append(f"❌ {char['nickname']}：{e}")
-            else:
-                results.append(f"❌ {char['nickname']}：凭据已过期，请重新绑定")
+            if not need_refresh:
+                # 凭据过期，尝试刷新（只刷新一次）
+                new_cred = await refresh_cred_if_needed(user_data)
+                need_refresh = True
+                if new_cred:
+                    storage.save_user(user_id, user_data)
+                    cred = new_cred
+                    try:
+                        sign_data = await SklandAPI.ark_sign(cred, char["uid"], char["channel_master_id"])
+                        results.append(_format_sign_result(char["nickname"], sign_data))
+                        continue
+                    except SklandException as e:
+                        results.append(_format_sign_error(char["nickname"], e))
+                        continue
+            results.append(f"❌ {char['nickname']}：凭据已过期，请重新绑定")
+        except LoginException:
+            if not need_refresh:
+                new_cred = await refresh_cred_by_access_token(user_data)
+                need_refresh = True
+                if new_cred:
+                    storage.save_user(user_id, user_data)
+                    cred = new_cred
+                    try:
+                        sign_data = await SklandAPI.ark_sign(cred, char["uid"], char["channel_master_id"])
+                        results.append(_format_sign_result(char["nickname"], sign_data))
+                        continue
+                    except SklandException as e:
+                        results.append(_format_sign_error(char["nickname"], e))
+                        continue
+            results.append(f"❌ {char['nickname']}：凭据已过期，请重新绑定")
         except SklandException as e:
-            results.append(f"❌ {char['nickname']}：{e}")
+            results.append(_format_sign_error(char["nickname"], e))
 
     await sign_cmd.finish("\n".join(results))
 
@@ -375,9 +449,9 @@ async def handle_char_update(event: MessageEvent):
         ark_chars = [c for c in characters if c["app_code"] == "arknights"]
         msg = f"角色信息更新成功喵！共 {len(characters)} 个角色"
         if ark_chars:
-            msg += f"，其中明日方舟 {len(ark_chars)} 个"
+            msg += f"，其中明日方舟 {len(ark_chars)} 个：\n{format_ark_chars(ark_chars)}"
         await char_update_cmd.finish(msg)
-    except UnauthorizedException:
+    except (UnauthorizedException, LoginException):
         new_cred = await refresh_cred_if_needed(user_data)
         if new_cred:
             storage.save_user(user_id, user_data)
@@ -386,7 +460,7 @@ async def handle_char_update(event: MessageEvent):
                 ark_chars = [c for c in characters if c["app_code"] == "arknights"]
                 msg = f"角色信息更新成功喵！共 {len(characters)} 个角色"
                 if ark_chars:
-                    msg += f"，其中明日方舟 {len(ark_chars)} 个"
+                    msg += f"，其中明日方舟 {len(ark_chars)} 个：\n{format_ark_chars(ark_chars)}"
                 await char_update_cmd.finish(msg)
             except SklandException as e:
                 await char_update_cmd.finish(f"更新失败喵：{e}")
