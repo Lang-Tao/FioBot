@@ -166,16 +166,16 @@ def _format_sign_result(nickname: str, sign_data: dict) -> str:
             f"{a.get('resource', {}).get('name', '未知')} x{a.get('count', 0)}"
             for a in awards
         )
-        return f"✅ {nickname}：签到成功！\n   获得：{award_text}"
-    return f"✅ {nickname}：签到成功！"
+        return f"{nickname}：签到成功喵！\n   获得：{award_text}"
+    return f"{nickname}：签到成功喵！"
 
 
 def _format_sign_error(nickname: str, error: Exception) -> str:
     """格式化签到错误信息"""
     error_msg = str(error)
     if "请勿重复签到" in error_msg:
-        return f"ℹ️ {nickname}：今日已签到"
-    return f"❌ {nickname}：{error_msg}"
+        return f"{nickname}：今日已签到"
+    return f"{nickname}：{error_msg}"
 
 
 # ==================== 命令定义 ====================
@@ -374,7 +374,7 @@ async def handle_sign(event: MessageEvent):
                     except SklandException as e:
                         results.append(_format_sign_error(char["nickname"], e))
                         continue
-            results.append(f"❌ {char['nickname']}：凭据已过期，请重新绑定")
+            results.append(f"{char['nickname']}：凭据已过期，请重新绑定")
         except LoginException:
             if not need_refresh:
                 new_cred = await refresh_cred_by_access_token(user_data)
@@ -389,7 +389,7 @@ async def handle_sign(event: MessageEvent):
                     except SklandException as e:
                         results.append(_format_sign_error(char["nickname"], e))
                         continue
-            results.append(f"❌ {char['nickname']}：凭据已过期，请重新绑定")
+            results.append(f"{char['nickname']}：凭据已过期，请重新绑定")
         except SklandException as e:
             results.append(_format_sign_error(char["nickname"], e))
 
@@ -414,17 +414,17 @@ async def handle_char_list(event: MessageEvent):
     ark_chars = [c for c in characters if c["app_code"] == "arknights"]
     other_chars = [c for c in characters if c["app_code"] != "arknights"]
 
-    lines = ["📋 绑定角色列表："]
+    lines = ["绑定角色列表："]
 
     if ark_chars:
-        lines.append("\n🎮 明日方舟：")
+        lines.append("\n明日方舟：")
         for c in ark_chars:
             server = "官服" if c["channel_master_id"] == "1" else "B服"
-            default_mark = " ⭐" if c.get("is_default") else ""
+            default_mark = "(默认)" if c.get("is_default") else ""
             lines.append(f"  {c['nickname']} | Lv.{c.get('level', '?')} | {server}{default_mark}")
 
     if other_chars:
-        lines.append("\n🎮 其他游戏：")
+        lines.append("\n其他游戏：")
         for c in other_chars:
             lines.append(f"  {c['nickname']} ({c['app_code']})")
 
