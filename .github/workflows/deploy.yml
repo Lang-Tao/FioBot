@@ -40,6 +40,19 @@ jobs:
 
                       echo "✅ Code updated via SCP."
 
+                      # 2.5 生成 .env 文件（从 GitHub Secrets 注入敏感配置）
+                      echo "🔑 Generating .env file from secrets..."
+                      cat > .env <<EOF
+                      ENVIRONMENT=prod
+                      DRIVER=~fastapi+~httpx+~websockets
+                      BAIDU_OCR_API_KEY=${{ secrets.BAIDU_OCR_API_KEY }}
+                      BAIDU_OCR_SECRET_KEY=${{ secrets.BAIDU_OCR_SECRET_KEY }}
+                      EOF
+                      # 去掉 heredoc 产生的前导空格
+                      sed -i 's/^[[:space:]]*//' .env
+
+                      echo "✅ .env file generated."
+
                       # 3. 设置虚拟环境 (适配您的服务器配置)
                       echo "🐍 Setting up virtual environment at $VENV_DIR..."
                       if [ ! -d "$VENV_DIR" ]; then

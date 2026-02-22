@@ -206,6 +206,49 @@ def find_recruit_combinations(
     return results
 
 
+def extract_tags_from_ocr(ocr_lines: list[str], valid_tags: list[str]) -> list[str]:
+    """
+    从 OCR 识别结果中提取公招标签
+
+    公招截图中的标签通常是标准的游戏标签名，直接做完全匹配即可。
+    也会尝试从长文本中提取已知标签子串。
+
+    Args:
+        ocr_lines: OCR 识别出的文字行列表
+        valid_tags: 所有合法的公招标签
+
+    Returns:
+        提取到的标签列表（去重）
+    """
+    found_tags: list[str] = []
+    valid_set = set(valid_tags)
+
+    for line in ocr_lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        # 1. 完全匹配
+        if line in valid_set:
+            if line not in found_tags:
+                found_tags.append(line)
+            continue
+
+        # 2. 别名匹配（OCR 可能识别出别名/错字）
+        mapped = TAG_ALIASES.get(line)
+        if mapped and mapped in valid_set:
+            if mapped not in found_tags:
+                found_tags.append(mapped)
+            continue
+
+        # 3. 子串匹配：在 OCR 识别的长文本中搜索已知标签
+        for tag in valid_tags:
+            if tag in line and tag not in found_tags:
+                found_tags.append(tag)
+
+    return found_tags
+
+
 def format_results(results: list[dict]) -> str:
     """
     将计算结果格式化为文本
