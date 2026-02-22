@@ -124,7 +124,7 @@ def render_recruit_result(tags: list[str], results: list[dict]) -> bytes:
     cy = PADDING
 
     # ===== 绘制标题 =====
-    draw.text((PADDING, cy), "🔍 明日方舟公招分析", fill=TEXT_TITLE, font=font_title)
+    draw.text((PADDING, cy), "明日方舟公招分析", fill=TEXT_TITLE, font=font_title)
     cy += 28 + 10
 
     # ===== 绘制识别标签 =====

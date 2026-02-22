@@ -102,9 +102,11 @@ async def _ensure_data() -> str | None:
     return None
 
 
-async def _do_recruit(tags: list[str]) -> MessageSegment:
-    """执行公招计算并返回图片消息段"""
+async def _do_recruit(tags: list[str]) -> MessageSegment | str:
+    """执行公招计算，有结果返回图片，无结果返回文字"""
     results = find_recruit_combinations(tags, _cached_operators)  # type: ignore
+    if not results:
+        return "没有找到有价值的标签组合喵~\n（只显示保底 4★ 及以上和必出 1★ 的组合）"
     img_bytes = render_recruit_result(tags, results)
     return MessageSegment.image(img_bytes)
 
@@ -154,7 +156,7 @@ async def handle_recruit(event: MessageEvent, args: Message = CommandArg()):
                 "请在 .env 中配置 BAIDU_OCR_API_KEY 和 BAIDU_OCR_SECRET_KEY"
             )
 
-        await recruit_cmd.send("📷 正在识别公招截图喵...")
+        await recruit_cmd.send("正在识别公招截图喵...")
 
         try:
             # 下载图片

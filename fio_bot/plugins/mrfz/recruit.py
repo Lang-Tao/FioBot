@@ -275,13 +275,13 @@ def format_results(results: list[dict]) -> str:
 
         # 标记高价值组合
         if min_star >= 5:
-            prefix = "🌟"
+            prefix = "[6]"
         elif min_star >= 4:
-            prefix = "⭐"
+            prefix = "[4]"
         elif min_star == 1:
-            prefix = "🤖"
+            prefix = "[1]"
         else:
-            prefix = "▪️"
+            prefix = "[-]"
 
         lines.append(f"{prefix}【{tag_str}】(保底 {min_star}★)")
 
