@@ -4,8 +4,12 @@
 """
 
 import io
+from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 from .recruit import rarity_display
+
+# 项目内置字体路径
+_FONT_DIR = Path(__file__).parent / "fonts"
 
 
 # ==================== 颜色配置 ====================
@@ -44,9 +48,18 @@ _font_cache: dict[int, ImageFont.FreeTypeFont] = {}
 
 
 def _get_font(size: int) -> ImageFont.FreeTypeFont:
-    """获取字体（带缓存），优先使用微软雅黑"""
+    """获取字体（带缓存），优先使用项目内置字体"""
     if size not in _font_cache:
-        for name in ["msyh.ttc", "msyhbd.ttc", "simhei.ttf", "simsun.ttc"]:
+        # 优先使用项目内置的思源黑体
+        bundled = _FONT_DIR / "NotoSansSC-Regular.otf"
+        if bundled.exists():
+            _font_cache[size] = ImageFont.truetype(str(bundled), size)
+            return _font_cache[size]
+
+        # 回退：尝试系统字体
+        for name in ["msyh.ttc", "msyhbd.ttc", "simhei.ttf", "NotoSansSC-Regular.otf",
+                      "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+                      "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc"]:
             try:
                 _font_cache[size] = ImageFont.truetype(name, size)
                 break
