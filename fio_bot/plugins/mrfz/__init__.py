@@ -28,6 +28,7 @@ from .recruit import (
     extract_tags_from_ocr,
 )
 from .ocr import ocr_image, download_image
+from .render import render_recruit_result
 
 
 __plugin_meta__ = PluginMetadata(
@@ -101,12 +102,11 @@ async def _ensure_data() -> str | None:
     return None
 
 
-async def _do_recruit(tags: list[str]) -> str:
-    """执行公招计算并返回格式化结果"""
-    tag_echo = "、".join(tags)
+async def _do_recruit(tags: list[str]) -> MessageSegment:
+    """执行公招计算并返回图片消息段"""
     results = find_recruit_combinations(tags, _cached_operators)  # type: ignore
-    output = format_results(results)
-    return f"📋 识别标签：{tag_echo}\n\n{output}"
+    img_bytes = render_recruit_result(tags, results)
+    return MessageSegment.image(img_bytes)
 
 
 # ==================== 公招识别 ====================
@@ -194,7 +194,7 @@ async def handle_recruit(event: MessageEvent, args: Message = CommandArg()):
             tags = tags[:5]
 
         result = await _do_recruit(tags)
-        await recruit_cmd.finish(result)
+        await recruit_cmd.finish(Message(result))
 
     # ===== 文字标签模式 =====
     # 解析用户输入的标签（支持无空格连写）
@@ -217,7 +217,7 @@ async def handle_recruit(event: MessageEvent, args: Message = CommandArg()):
         )
 
     result = await _do_recruit(tags)
-    await recruit_cmd.finish(result)
+    await recruit_cmd.finish(Message(result))
 
 
 # ==================== 数据更新 ====================

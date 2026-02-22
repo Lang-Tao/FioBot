@@ -185,11 +185,17 @@ def find_recruit_combinations(
 
             # 计算这个组合的最低保底稀有度
             min_rarity = min(m["rarity"] for m in matched)
+            max_rarity = max(m["rarity"] for m in matched)
 
-            # 过滤低价值组合：如果匹配结果包含 1★ 或 2★ 干员，跳过
-            # （因为公招结果不可控，低星会稀释概率）
-            if min_rarity <= 1:
+            # 只保留高价值组合：保底 4★+ 或必出 1★（支援机械），跳过 2★ 和 3★
+            if min_rarity in (1, 2):
                 continue
+
+            # 1★ 组合仅在"必出"时保留（所有匹配干员都是 1★）
+            if min_rarity == 0:
+                if max_rarity > 0:
+                    continue
+                matched = [m for m in matched if m["rarity"] == 0]
 
             # 按稀有度从高到低排序匹配干员
             matched.sort(key=lambda x: (-x["rarity"], x["name"]))
@@ -260,7 +266,7 @@ def format_results(results: list[dict]) -> str:
         格式化的文本消息
     """
     if not results:
-        return "没有找到有价值的标签组合喵~\n（只显示保底 3★ 及以上的组合）"
+        return "没有找到有价值的标签组合喵~\n（只显示保底 4★ 及以上和 1★ 的组合）"
 
     lines = []
     for i, r in enumerate(results):
@@ -272,6 +278,8 @@ def format_results(results: list[dict]) -> str:
             prefix = "🌟"
         elif min_star >= 4:
             prefix = "⭐"
+        elif min_star == 1:
+            prefix = "🤖"
         else:
             prefix = "▪️"
 
