@@ -195,6 +195,10 @@ def build_recruit_data(
         if not isinstance(char_data, dict):
             continue
 
+        # 只保留正式干员，过滤召唤物/陷阱等非干员实体
+        if not char_id.startswith("char_"):
+            continue
+
         name = char_data.get("name", "")
         if not name or name not in recruit_pool:
             continue

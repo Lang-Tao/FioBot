@@ -174,6 +174,10 @@ def find_recruit_combinations(
                 if not combo_set.issubset(op["tags"]):
                     continue
 
+                # 1★ 保护：支援机械只在明确选择"支援机械"标签时出现
+                if op["rarity"] == 0 and "支援机械" not in combo_set:
+                    continue
+
                 # 6★ 保护：除非组合中有"高级资深干员"，否则跳过 6★
                 if op["rarity"] == 5 and "高级资深干员" not in combo_set:
                     continue
