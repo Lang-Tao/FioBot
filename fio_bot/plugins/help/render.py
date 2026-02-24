@@ -149,7 +149,13 @@ body {
   font-weight: 600;
   margin-bottom: 12px;
 }
-.badge .icon { font-size: 15px; }
+.badge .icon {
+  font-size: 18px;
+  vertical-align: middle;
+  position: relative;
+  top: 2px;
+  font-family: inherit;
+}
 
 /* 指令条目 */
 .cmd-item {
