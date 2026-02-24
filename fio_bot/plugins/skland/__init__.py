@@ -182,7 +182,7 @@ def _format_sign_error(nickname: str, error: Exception) -> str:
 
 bind_cmd = on_command("森空岛绑定", priority=10, block=True)
 qrcode_cmd = on_command("扫码绑定", priority=10, block=True)
-sign_cmd = on_command("明日方舟签到", aliases={"方舟签到"}, priority=10, block=True)
+sign_cmd = on_command("明日方舟签到", aliases={"方舟签到","fzqd","zq"}, priority=10, block=True)
 char_list_cmd = on_command("角色列表", priority=10, block=True)
 char_update_cmd = on_command("角色更新", priority=10, block=True)
 

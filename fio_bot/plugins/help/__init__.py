@@ -1,6 +1,7 @@
 from nonebot import get_plugin_config, on_command, logger
 from nonebot.plugin import PluginMetadata
 from nonebot.adapters.onebot.v11 import MessageSegment
+from nonebot.exception import MatcherException
 
 from .config import Config
 from .render import render_help_image
@@ -22,6 +23,8 @@ async def handle_function():
     try:
         img_bytes = await render_help_image()
         await help.finish(MessageSegment.image(img_bytes))
+    except MatcherException:
+        raise
     except Exception as e:
         logger.error(f"渲染帮助图片失败: {e}")
         await help.finish("帮助图片生成失败，请稍后再试")

@@ -150,12 +150,8 @@ body {
   border-top: none;
 }
 .cmd-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  margin-right: 8px;
-  vertical-align: middle;
+  font-size: 8px;
+  margin-right: 6px;
 }
 .cmd-name {
   font-size: 13px;
@@ -204,7 +200,7 @@ def _build_card_html(section: dict) -> str:
     for cmd_name, cmd_desc in section["commands"]:
         parts.append(
             f'<div class="cmd-item">'
-            f'  <span class="cmd-dot" style="background:{accent};"></span>'
+            f'  <span class="cmd-dot" style="color:{accent};">●</span>'
             f'  <span class="cmd-name" style="color:{accent};">{cmd_name}</span>'
             f'  <div class="cmd-desc">{cmd_desc}</div>'
             f'</div>'
