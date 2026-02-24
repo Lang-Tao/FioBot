@@ -80,10 +80,11 @@ body {
     border-left: 4px solid #64b4ff;
 }
 .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    width: 100%;
     margin-bottom: 8px;
+}
+.card-header td {
+    vertical-align: middle;
 }
 .card-title {
     font-size: 16px;
@@ -93,9 +94,7 @@ body {
 .card-badge {
     font-size: 13px;
     font-weight: bold;
-    padding: 2px 8px;
-    border-radius: 4px;
-    background: rgba(255,255,255,0.08);
+    text-align: right;
 }
 .op-row {
     font-size: 15px;
@@ -140,13 +139,13 @@ def _build_html(tags: list[str], results: list[dict]) -> str:
 
         parts.append(f'<div class="card" style="border-left-color:{bar_color};">')
 
-        # 卡片头：标签组合 + 保底星级
-        parts.append('<div class="card-header">')
-        parts.append(f'<span class="card-title">【{tag_str}】</span>')
+        # 卡片头：标签组合（左）+ 保底星级（右），用 table 实现两端对齐
+        parts.append('<table class="card-header"><tr>')
+        parts.append(f'<td><span class="card-title">【{tag_str}】</span></td>')
         parts.append(
-            f'<span class="card-badge" style="color:{badge_color};">保底{min_star}★</span>'
+            f'<td class="card-badge" style="color:{badge_color};">保底{min_star}★</td>'
         )
-        parts.append("</div>")
+        parts.append("</tr></table>")
 
         # 干员列表
         for op in r["operators"]:

@@ -79,35 +79,23 @@ _CSS = """\
 
 body {
   width: 640px;
-  background: linear-gradient(168deg, #f5ebe1 0%, #f0e3d8 35%, #ede0d8 65%, #f2e8e2 100%);
+  background: #f0e5dc;
   font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
   padding: 0;
-  position: relative;
-  overflow: hidden;
 }
 
 /* ---- 顶部横幅 ---- */
 .header {
-  background: linear-gradient(135deg, #e8d0c2 0%, #dcc0b5 40%, #d8bbb2 100%);
+  background: #dcc0b5;
   padding: 36px 24px 28px;
   text-align: center;
   border-radius: 0 0 28px 28px;
-  position: relative;
-}
-.header::before {
-  content: "";
-  position: absolute;
-  top: 12px; left: 28px; right: 28px; bottom: 12px;
-  border: 2px dashed rgba(255,255,255,0.35);
-  border-radius: 18px;
-  pointer-events: none;
 }
 .header h1 {
   font-size: 26px;
   font-weight: 700;
   color: #6e4040;
   letter-spacing: 2px;
-  text-shadow: 0 1px 0 rgba(255,240,230,0.5);
 }
 .header .sub {
   font-size: 13px;
@@ -115,35 +103,36 @@ body {
   margin-top: 6px;
   letter-spacing: 1px;
 }
-.header .flower { font-size: 16px; vertical-align: middle; }
+.header .flower { font-size: 16px; }
 
-/* ---- 内容区 ---- */
-.content {
-  display: flex;
-  gap: 14px;
+/* ---- 内容区（双列） ---- */
+.content-table {
+  width: 100%;
   padding: 22px 24px 16px;
 }
-.column {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.content-table td {
+  width: 50%;
+  vertical-align: top;
+}
+.content-table td.left-col {
+  padding-right: 7px;
+}
+.content-table td.right-col {
+  padding-left: 7px;
 }
 
 /* ---- 卡片 ---- */
 .card {
-  background: rgba(255,252,248,0.78);
-  border-radius: 16px;
+  background: #fffcf8;
+  border-radius: 14px;
   padding: 18px 16px 14px;
-  box-shadow: 0 2px 10px rgba(120,90,80,0.07), 0 0.5px 2px rgba(80,50,40,0.04);
-  border: 1px solid rgba(210,195,185,0.45);
+  border: 1px solid #ddd0c8;
+  margin-bottom: 14px;
 }
 
 /* 分类标题 badge */
 .badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: inline-block;
   padding: 5px 14px 5px 10px;
   border-radius: 20px;
   font-size: 14px;
@@ -152,40 +141,31 @@ body {
 }
 .badge .icon { font-size: 15px; }
 
-/* 指令列表 */
-.cmd-list {
-  list-style: none;
-}
+/* 指令条目 */
 .cmd-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
   padding: 6px 0;
+  border-top: 1px dashed #e0d5d0;
 }
-.cmd-item + .cmd-item {
-  border-top: 1px dashed rgba(180,160,150,0.30);
+.cmd-item:first-child {
+  border-top: none;
 }
 .cmd-dot {
+  display: inline-block;
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  margin-top: 6px;
-  flex-shrink: 0;
-}
-.cmd-body {
-  flex: 1;
-  min-width: 0;
+  margin-right: 8px;
+  vertical-align: middle;
 }
 .cmd-name {
   font-size: 13px;
   font-weight: 600;
-  font-family: "Consolas", "Menlo", "Noto Sans SC", monospace;
-  word-break: break-all;
 }
 .cmd-desc {
   font-size: 11px;
   color: #a09088;
   margin-top: 2px;
+  padding-left: 15px;
 }
 
 /* ---- 底部 ---- */
@@ -195,14 +175,6 @@ body {
   font-size: 11px;
   color: #baa8a0;
   letter-spacing: 2px;
-}
-.footer .dot {
-  display: inline-block;
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: #d8c8c0;
-  vertical-align: middle;
-  margin: 0 8px;
 }
 """
 
@@ -216,10 +188,10 @@ def _build_card_html(section: dict) -> str:
     style = SECTION_COLORS.get(key, SECTION_COLORS["skland"])
     accent = style["accent"]
     light = style["light"]
-    icon = section.get("icon", "•")
+    icon = section.get("icon", "")
 
     parts: list[str] = []
-    parts.append(f'<div class="card">')
+    parts.append('<div class="card">')
 
     # badge
     parts.append(
@@ -229,20 +201,16 @@ def _build_card_html(section: dict) -> str:
     )
 
     # commands
-    parts.append('<ul class="cmd-list">')
     for cmd_name, cmd_desc in section["commands"]:
         parts.append(
-            f'<li class="cmd-item">'
+            f'<div class="cmd-item">'
             f'  <span class="cmd-dot" style="background:{accent};"></span>'
-            f'  <div class="cmd-body">'
-            f'    <div class="cmd-name" style="color:{accent};">{cmd_name}</div>'
-            f'    <div class="cmd-desc">{cmd_desc}</div>'
-            f'  </div>'
-            f'</li>'
+            f'  <span class="cmd-name" style="color:{accent};">{cmd_name}</span>'
+            f'  <div class="cmd-desc">{cmd_desc}</div>'
+            f'</div>'
         )
-    parts.append('</ul>')
-    parts.append('</div>')
 
+    parts.append('</div>')
     return "\n".join(parts)
 
 
@@ -259,27 +227,27 @@ def _build_html() -> str:
         '</div>'
     )
 
-    # 双列内容
-    parts.append('<div class="content">')
+    # 双列内容（用 table 布局，litehtml 兼容性最好）
+    parts.append('<table class="content-table"><tr>')
 
     # 左列
-    parts.append('<div class="column">')
+    parts.append('<td class="left-col">')
     for sec in LEFT_COL:
         parts.append(_build_card_html(sec))
-    parts.append('</div>')
+    parts.append('</td>')
 
     # 右列
-    parts.append('<div class="column">')
+    parts.append('<td class="right-col">')
     for sec in RIGHT_COL:
         parts.append(_build_card_html(sec))
-    parts.append('</div>')
+    parts.append('</td>')
 
-    parts.append('</div>')
+    parts.append('</tr></table>')
 
     # Footer
     parts.append(
         '<div class="footer">'
-        '<span class="dot"></span> fiobot <span class="dot"></span>'
+        '· fiobot ·'
         '</div>'
     )
 
