@@ -80,11 +80,14 @@ _CSS = """\
 body {
   width: 640px;
   background: #f0e5dc;
-  font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-family: 'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif;
   padding: 0;
 }
-
 /* ---- 顶部横幅 ---- */
+.header, .header h1, .header .sub {
+  font-family: 'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif;
+  letter-spacing: 0;
+}
 .header {
   background: #dcc0b5;
   padding: 36px 24px 28px;
@@ -92,18 +95,25 @@ body {
   border-radius: 0 0 28px 28px;
 }
 .header h1 {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
   color: #6e4040;
-  letter-spacing: 2px;
+  line-height: 28px;
 }
 .header .sub {
-  font-size: 13px;
+  font-size: 16px;
   color: #9e8585;
   margin-top: 6px;
-  letter-spacing: 1px;
+  line-height: 28px;
 }
 .header .flower { font-size: 16px; }
+/* 指令名等统一字体 */
+.cmd-name, .badge {
+  font-family: 'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 28px;
+  letter-spacing: 0;
+}
 
 /* ---- 内容区（双列） ---- */
 .content-table {
