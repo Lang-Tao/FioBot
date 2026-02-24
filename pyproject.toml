@@ -9,6 +9,7 @@ dependencies = [
     "nonebot2[httpx]>=2.4.4",
     "nonebot2[websockets]>=2.4.4",
     "nonebot-adapter-onebot>=2.4.6",
+    "nonebot-plugin-htmlkit>=0.1.0rc5",
     "qrcode[pil]>=7.0",
 ]
 

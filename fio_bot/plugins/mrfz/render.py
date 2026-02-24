@@ -1,85 +1,174 @@
 """公招结果图片渲染模块
 
-使用 Pillow 将公招组合计算结果绘制为图片
+使用 nonebot-plugin-htmlkit 将公招组合计算结果渲染为图片
+本地预览：python fio_bot/plugins/mrfz/render.py
 """
 
-import io
-from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
-from .recruit import rarity_display
+from __future__ import annotations
 
-# 项目内置字体路径
-_FONT_DIR = Path(__file__).parent / "fonts"
+# rarity_display 在运行时延迟导入，避免循环 / NoneBot 依赖问题
+_rarity_display = None
+
+
+def _get_rarity_display(rarity: int) -> str:
+    """获取星级显示文本，兼容独立运行"""
+    global _rarity_display
+    if _rarity_display is None:
+        try:
+            from .recruit import rarity_display
+            _rarity_display = rarity_display
+        except ImportError:
+            # 独立运行时的回退实现
+            _stars = {0: "★", 1: "★★", 2: "★★★", 3: "★★★★", 4: "★★★★★", 5: "★★★★★★"}
+            _rarity_display = lambda r: _stars.get(r, f"{r + 1}★")
+    return _rarity_display(rarity)
 
 
 # ==================== 颜色配置 ====================
 
-# 背景与边框
-BG_COLOR = (30, 30, 35)          # 深灰背景
-CARD_BG = (45, 45, 52)           # 卡片背景
-BORDER_COLOR = (70, 70, 80)      # 卡片边框
-
-# 文字颜色
-TEXT_WHITE = (240, 240, 240)
-TEXT_GRAY = (170, 170, 180)
-TEXT_TITLE = (255, 200, 80)      # 标题金色
-
-# 稀有度颜色（0-based）
-RARITY_COLORS = {
-    0: (150, 150, 150),   # 1★ 灰色
-    1: (200, 200, 200),   # 2★ 白色
-    2: (100, 180, 255),   # 3★ 蓝色
-    3: (200, 150, 255),   # 4★ 紫色
-    4: (255, 200, 60),    # 5★ 金色
-    5: (255, 120, 50),    # 6★ 橙色
+# 稀有度颜色（0-based, CSS hex）
+RARITY_COLORS: dict[int, str] = {
+    0: "#969696",   # 1★ 灰色
+    1: "#c8c8c8",   # 2★ 白色
+    2: "#64b4ff",   # 3★ 蓝色
+    3: "#c896ff",   # 4★ 紫色
+    4: "#ffc83c",   # 5★ 金色
+    5: "#ff7832",   # 6★ 橙色
 }
 
-# 保底星级高亮色
-MIN_STAR_COLORS = {
-    1: (150, 150, 150),
-    4: (200, 150, 255),
-    5: (255, 200, 60),
-    6: (255, 120, 50),
+# 保底星级高亮色（1-based）
+MIN_STAR_COLORS: dict[int, str] = {
+    1: "#969696",
+    4: "#c896ff",
+    5: "#ffc83c",
+    6: "#ff7832",
 }
 
-# ==================== 字体 ====================
+# ==================== CSS 样式 ====================
 
-_font_cache: dict[int, ImageFont.FreeTypeFont] = {}
-
-
-def _get_font(size: int) -> ImageFont.FreeTypeFont:
-    """获取字体（带缓存），优先使用项目内置字体"""
-    if size not in _font_cache:
-        # 优先使用项目内置的思源黑体
-        bundled = _FONT_DIR / "NotoSansSC-Regular.otf"
-        if bundled.exists():
-            _font_cache[size] = ImageFont.truetype(str(bundled), size)
-            return _font_cache[size]
-
-        # 回退：尝试系统字体
-        for name in ["msyh.ttc", "msyhbd.ttc", "simhei.ttf", "NotoSansSC-Regular.otf",
-                      "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-                      "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc"]:
-            try:
-                _font_cache[size] = ImageFont.truetype(name, size)
-                break
-            except (OSError, IOError):
-                continue
-        else:
-            _font_cache[size] = ImageFont.load_default()
-    return _font_cache[size]
+_CSS = """\
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #1e1e23;
+    color: #f0f0f0;
+    font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    padding: 28px 28px 20px;
+    width: 520px;
+}
+.title {
+    font-size: 22px;
+    font-weight: bold;
+    color: #ffc850;
+    margin-bottom: 8px;
+}
+.tags-info {
+    font-size: 16px;
+    color: #aaaab4;
+    margin-bottom: 14px;
+}
+.empty-hint {
+    font-size: 15px;
+    color: #aaaab4;
+    padding: 10px 0;
+}
+.card {
+    background: #2d2d34;
+    border: 1px solid #464650;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    padding: 14px 16px;
+    border-left: 4px solid #64b4ff;
+}
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.card-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #f0f0f0;
+}
+.card-badge {
+    font-size: 13px;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.08);
+}
+.op-row {
+    font-size: 15px;
+    padding: 2px 0;
+}
+.footer {
+    text-align: center;
+    font-size: 12px;
+    color: #64646e;
+    margin-top: 6px;
+}
+"""
 
 
 # ==================== 渲染 ====================
 
-# 布局常量
-PADDING = 30
-CARD_PADDING = 16
-CARD_GAP = 12
-IMG_WIDTH = 520
+
+def _build_html(tags: list[str], results: list[dict]) -> str:
+    """构建公招结果的 HTML"""
+    parts: list[str] = []
+    parts.append(f"<html><head><style>{_CSS}</style></head><body>")
+
+    # 标题
+    parts.append('<div class="title">明日方舟公招分析</div>')
+
+    # 识别标签
+    tag_text = "、".join(tags)
+    parts.append(f'<div class="tags-info">识别标签：{tag_text}</div>')
+
+    # 空结果
+    if not results:
+        parts.append('<div class="empty-hint">没有找到有价值的标签组合</div>')
+        parts.append("</body></html>")
+        return "".join(parts)
+
+    # 组合卡片
+    for r in results:
+        min_star = r["min_rarity"] + 1
+        tag_str = " + ".join(r["tags"])
+        bar_color = MIN_STAR_COLORS.get(min_star, "#64b4ff")
+        badge_color = MIN_STAR_COLORS.get(min_star, "#f0f0f0")
+
+        parts.append(f'<div class="card" style="border-left-color:{bar_color};">')
+
+        # 卡片头：标签组合 + 保底星级
+        parts.append('<div class="card-header">')
+        parts.append(f'<span class="card-title">【{tag_str}】</span>')
+        parts.append(
+            f'<span class="card-badge" style="color:{badge_color};">保底{min_star}★</span>'
+        )
+        parts.append("</div>")
+
+        # 干员列表
+        for op in r["operators"]:
+            rarity = op["rarity"]
+            color = RARITY_COLORS.get(rarity, "#f0f0f0")
+            star_text = _get_rarity_display(rarity)
+            name = op["name"]
+            parts.append(
+                f'<div class="op-row" style="color:{color};">'
+                f"{star_text} {name}</div>"
+            )
+
+        parts.append("</div>")
+
+    # 底部签名
+    parts.append('<div class="footer">Generated by @fiobot</div>')
+    parts.append("</body></html>")
+
+    return "".join(parts)
 
 
-def render_recruit_result(tags: list[str], results: list[dict]) -> bytes:
+async def render_recruit_result(tags: list[str], results: list[dict]) -> bytes:
     """
     将公招结果渲染为图片
 
@@ -90,128 +179,65 @@ def render_recruit_result(tags: list[str], results: list[dict]) -> bytes:
     Returns:
         PNG 图片的 bytes
     """
-    font_title = _get_font(22)
-    font_tag = _get_font(18)
-    font_body = _get_font(16)
-    font_small = _get_font(14)
+    from nonebot import require
 
-    # ===== 预计算总高度 =====
-    y = PADDING
+    require("nonebot_plugin_htmlkit")
+    from nonebot_plugin_htmlkit import html_to_pic
 
-    # 标题行
-    y += 28 + 10
-
-    # 识别标签行
-    y += 22 + 16
-
-    if not results:
-        y += 40  # 空结果提示
-    else:
-        for r in results:
-            # 每个组合卡片：标签头 + 干员列表
-            card_h = CARD_PADDING  # 上内边距
-            card_h += 24 + 8      # 标签行 + 间距
-            card_h += len(r["operators"]) * 22  # 每个干员一行
-            card_h += CARD_PADDING  # 下内边距
-            y += card_h + CARD_GAP
-
-    y += 18 + PADDING  # 底部签名 + 留白
-
-    # ===== 创建画布 =====
-    img = Image.new("RGB", (IMG_WIDTH, y), BG_COLOR)
-    draw = ImageDraw.Draw(img)
-
-    cy = PADDING
-
-    # ===== 绘制标题 =====
-    draw.text((PADDING, cy), "明日方舟公招分析", fill=TEXT_TITLE, font=font_title)
-    cy += 28 + 10
-
-    # ===== 绘制识别标签 =====
-    tag_text = "识别标签：" + "、".join(tags)
-    draw.text((PADDING, cy), tag_text, fill=TEXT_GRAY, font=font_tag)
-    cy += 22 + 16
-
-    # ===== 空结果 =====
-    if not results:
-        draw.text(
-            (PADDING, cy),
-            "没有找到有价值的标签组合喵~",
-            fill=TEXT_GRAY,
-            font=font_body,
-        )
-        return _to_bytes(img)
-
-    # ===== 绘制每个组合卡片 =====
-    content_width = IMG_WIDTH - PADDING * 2
-
-    for r in results:
-        min_star = r["min_rarity"] + 1
-        tag_str = " + ".join(r["tags"])
-
-        # 卡片高度
-        card_h = CARD_PADDING + 24 + 8 + len(r["operators"]) * 22 + CARD_PADDING
-
-        # 卡片背景 + 左侧色条
-        card_rect = (PADDING, cy, PADDING + content_width, cy + card_h)
-        draw.rounded_rectangle(card_rect, radius=8, fill=CARD_BG, outline=BORDER_COLOR)
-
-        # 左侧色条
-        bar_color = MIN_STAR_COLORS.get(min_star, (100, 180, 255))
-        draw.rectangle(
-            (PADDING, cy + 4, PADDING + 4, cy + card_h - 4),
-            fill=bar_color,
-        )
-
-        # 标签组合标题
-        ix = PADDING + CARD_PADDING
-        iy = cy + CARD_PADDING
-
-        # 保底星级标记
-        star_label = f"保底{min_star}★"
-        star_color = MIN_STAR_COLORS.get(min_star, TEXT_WHITE)
-
-        # 先绘制星级标签（右侧）
-        star_bbox = draw.textbbox((0, 0), star_label, font=font_small)
-        star_w = star_bbox[2] - star_bbox[0]
-        star_x = PADDING + content_width - CARD_PADDING - star_w
-        draw.text((star_x, iy + 2), star_label, fill=star_color, font=font_small)
-
-        # 标签组合名（左侧）
-        draw.text((ix, iy), f"【{tag_str}】", fill=TEXT_WHITE, font=font_tag)
-        iy += 24 + 8
-
-        # 干员列表
-        for op in r["operators"]:
-            rarity = op["rarity"]
-            color = RARITY_COLORS.get(rarity, TEXT_WHITE)
-            star_text = rarity_display(rarity)
-            name = op["name"]
-
-            draw.text((ix, iy), f"{star_text}", fill=color, font=font_body)
-            # 星级文字后再绘制干员名
-            star_text_w = draw.textbbox((0, 0), f"{star_text} ", font=font_body)[2]
-            draw.text((ix + star_text_w, iy), name, fill=color, font=font_body)
-            iy += 22
-
-        cy += card_h + CARD_GAP
-
-    # ===== 底部签名 =====
-    footer = "Generated by fiobot"
-    footer_bbox = draw.textbbox((0, 0), footer, font=font_small)
-    footer_w = footer_bbox[2] - footer_bbox[0]
-    draw.text(
-        ((IMG_WIDTH - footer_w) // 2, cy),
-        footer,
-        fill=(100, 100, 110),
-        font=font_small,
-    )
-
-    return _to_bytes(img)
+    html = _build_html(tags, results)
+    return await html_to_pic(html=html, max_width=520)
 
 
-def _to_bytes(img: Image.Image) -> bytes:
-    """将 PIL Image 转换为 PNG bytes"""
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
+# ==================== 本地预览 ====================
+
+def _preview():
+    """生成示例 HTML 并在浏览器中打开，用于本地调试样式"""
+    import tempfile
+    import webbrowser
+
+    # 模拟数据
+    sample_tags = ["高级资深干员", "近卫干员", "输出"]
+    sample_results = [
+        {
+            "tags": ["高级资深干员", "近卫干员"],
+            "min_rarity": 5,
+            "operators": [
+                {"name": "银灰", "rarity": 5},
+                {"name": "棘刺", "rarity": 5},
+                {"name": "耀骑士临光", "rarity": 5},
+            ],
+        },
+        {
+            "tags": ["近卫干员", "输出"],
+            "min_rarity": 3,
+            "operators": [
+                {"name": "银灰", "rarity": 5},
+                {"name": "棘刺", "rarity": 5},
+                {"name": "星熊", "rarity": 4},
+                {"name": "杜宾", "rarity": 3},
+                {"name": "艾丝黛尔", "rarity": 2},
+            ],
+        },
+        {
+            "tags": ["输出"],
+            "min_rarity": 3,
+            "operators": [
+                {"name": "能天使", "rarity": 5},
+                {"name": "陨星", "rarity": 4},
+                {"name": "白雪", "rarity": 3},
+            ],
+        },
+    ]
+
+    html = _build_html(sample_tags, sample_results)
+
+    with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False, encoding="utf-8") as f:
+        f.write(html)
+        path = f.name
+
+    webbrowser.open(path)
+    print(f"已在浏览器中打开预览：{path}")
+
+
+if __name__ == "__main__":
+    _preview()

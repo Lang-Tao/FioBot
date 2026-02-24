@@ -108,7 +108,7 @@ async def _do_recruit(tags: list[str]) -> MessageSegment | str:
     results = find_recruit_combinations(tags, _cached_operators)  # type: ignore
     if not results:
         return "没有找到有价值的标签组合喵~\n（只显示保底 4★ 及以上和必出 1★ 的组合）"
-    img_bytes = render_recruit_result(tags, results)
+    img_bytes = await render_recruit_result(tags, results)
     return MessageSegment.image(img_bytes)
 
 
