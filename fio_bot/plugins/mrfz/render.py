@@ -51,18 +51,23 @@ _CSS = """\
 body {
     background: #1e1e23;
     color: #f0f0f0;
-    font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    font-family: 'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif;
     padding: 28px 28px 20px;
     width: 520px;
 }
+.title, .tags-info {
+    font-family: 'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif;
+    font-size: 20px;
+    line-height: 28px;
+    letter-spacing: 0;
+}
 .title {
-    font-size: 22px;
-    font-weight: bold;
+    font-weight: 700;
     color: #ffc850;
     margin-bottom: 8px;
 }
 .tags-info {
-    font-size: 16px;
+    font-weight: 400;
     color: #aaaab4;
     margin-bottom: 14px;
 }
