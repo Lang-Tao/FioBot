@@ -15,3 +15,18 @@ class Config(BaseModel):
 
     # 每个群的触发冷却（秒）；防止短时间内频繁复读
     repeater_cooldown_seconds: float = 10.0
+
+    # ==================== 首字母联想复读 ====================
+
+    # 是否启用“拼音首字母相同但内容不同”的联想复读
+    repeater_initialism_enabled: bool = True
+
+    # 首字母联想触发所需的消息条数
+    repeater_initialism_min_messages: int = 2
+
+    # 首字母联想触发所需的不同用户数
+    repeater_initialism_min_users: int = 2
+
+    # 首字母联想允许的首字母串长度范围（过短/过长都容易误触）
+    repeater_initialism_min_len: int = 2
+    repeater_initialism_max_len: int = 12
