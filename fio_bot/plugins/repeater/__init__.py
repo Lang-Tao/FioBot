@@ -224,7 +224,7 @@ async def handle_repeater(bot: Bot, event: GroupMessageEvent):
             initialism_streak = _InitialismStreak()
             _group_initialism_state[group_id] = initialism_streak
 
-        window = float(getattr(config, "repeater_window_seconds", 15.0))
+        window = float(getattr(config, "repeater_window_seconds", 180.0))
         min_messages = int(getattr(config, "repeater_min_messages", 3))
         min_users = int(getattr(config, "repeater_min_users", 3))
         cooldown = float(getattr(config, "repeater_cooldown_seconds", 10.0))

@@ -11,7 +11,7 @@ class Config(BaseModel):
     repeater_min_users: int = 3
 
     # 复读统计的时间窗口（秒）；超过该间隔视为新一轮
-    repeater_window_seconds: float = 15.0
+    repeater_window_seconds: float = 180.0
 
     # 每个群的触发冷却（秒）；防止短时间内频繁复读
     repeater_cooldown_seconds: float = 10.0
