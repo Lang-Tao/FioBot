@@ -5,7 +5,7 @@ class Config(BaseModel):
     """复读插件配置"""
 
     # 开启后会在日志中输出计数/重置原因，便于排查未触发问题
-    repeater_debug: bool = False
+    repeater_debug: bool = True
 
     # 连续相同消息达到多少条后触发（包含不同用户的发送）
     repeater_min_messages: int = 3
