@@ -12,16 +12,6 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
-                        - name: Prepare remote directory
-                            uses: appleboy/ssh-action@master
-                            with:
-                                    host: ${{ secrets.ALIYUN_HOST }}
-                                    username: ${{ secrets.ALIYUN_USER }}
-                                    key: ${{ secrets.ALIYUN_KEY }}
-                                    script: |
-                                            set -e
-                                            mkdir -p /opt/fiobot
-
             - name: Copy files via SCP
               uses: appleboy/scp-action@master
               with:
@@ -29,7 +19,7 @@ jobs:
                   username: ${{ secrets.ALIYUN_USER }}
                   key: ${{ secrets.ALIYUN_KEY }}
                   source: "."
-                                    target: "/opt/fiobot"
+                  target: "/opt/fiobot"
                   rm: false
                   strip_components: 0
 
@@ -44,7 +34,7 @@ jobs:
                       echo "🚀 Starting deployment tasks..."
 
                       TARGET_DIR="/opt/fiobot"
-                      VENV_DIR="/root/venv"
+                      VENV_DIR="/opt/fiobot/venv"
 
                       cd $TARGET_DIR
 
