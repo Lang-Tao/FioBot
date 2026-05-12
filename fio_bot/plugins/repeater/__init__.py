@@ -84,10 +84,21 @@ def _get_lock(group_id: int) -> asyncio.Lock:
 
 
 def _message_key(event: GroupMessageEvent) -> str:
-    # raw_message 在 OneBot V11 中包含 CQ 码；能覆盖图片/表情等复读
+    # 对“文字类消息”（纯 text / markdown）用 plaintext 作为 key：
+    # 这样能兼容某些客户端的富文本样式（显示一样，但 raw_message 不同）。
+    # 对包含图片/表情/at 等非文字段的消息，仍用 raw_message 保持严格匹配。
+    try:
+        text_like_types = {"text", "markdown"}
+        if all(seg.type in text_like_types for seg in event.message):
+            pt = event.get_plaintext().strip()
+            if pt:
+                return pt
+    except Exception:
+        pass
+
     raw = getattr(event, "raw_message", None)
     if raw is not None:
-        return raw.strip()
+        return str(raw).strip()
     return str(event.message).strip()
 
 
@@ -228,6 +239,7 @@ async def handle_repeater(bot: Bot, event: GroupMessageEvent):
         min_messages = int(getattr(config, "repeater_min_messages", 3))
         min_users = int(getattr(config, "repeater_min_users", 3))
         cooldown = float(getattr(config, "repeater_cooldown_seconds", 10.0))
+        debug = bool(getattr(config, "repeater_debug", False))
 
         initialism_enabled = bool(getattr(config, "repeater_initialism_enabled", True))
         initialism_min_messages = int(getattr(config, "repeater_initialism_min_messages", 2))
@@ -235,8 +247,18 @@ async def handle_repeater(bot: Bot, event: GroupMessageEvent):
         initialism_min_len = int(getattr(config, "repeater_initialism_min_len", 2))
         initialism_max_len = int(getattr(config, "repeater_initialism_max_len", 12))
 
-        is_new_round = streak.key != key or (now - streak.last_ts) > window
+        expired = (now - streak.last_ts) > window if streak.last_ts else False
+        is_new_round = streak.key != key or expired
         if is_new_round:
+            if debug and streak.key:
+                logger.info(
+                    "repeater reset | group=%s | prev_key=%r | new_key=%r | expired=%s | dt=%.2fs",
+                    group_id,
+                    streak.key,
+                    key,
+                    expired,
+                    (now - streak.last_ts) if streak.last_ts else 0.0,
+                )
             streak.key = key
             streak.last_ts = now
             streak.count = 1
@@ -246,6 +268,16 @@ async def handle_repeater(bot: Bot, event: GroupMessageEvent):
             streak.last_ts = now
             streak.count += 1
             streak.user_ids.add(int(event.user_id))
+
+        if debug:
+            logger.info(
+                "repeater tick | group=%s | key=%r | count=%s | users=%s/%s",
+                group_id,
+                key,
+                streak.count,
+                len(streak.user_ids),
+                min_users,
+            )
 
         should_trigger = (
             (not streak.triggered)
@@ -258,6 +290,14 @@ async def handle_repeater(bot: Bot, event: GroupMessageEvent):
             streak.triggered = True
             streak.last_trigger_ts = now
             to_send = event.message
+            if debug:
+                logger.info(
+                    "repeater trigger | group=%s | key=%r | count=%s | users=%s",
+                    group_id,
+                    key,
+                    streak.count,
+                    len(streak.user_ids),
+                )
 
         # ==================== 首字母联想复读 ====================
         # 仅在“不是完全相同内容复读”的分支上补充触发；完全相同由上面处理
