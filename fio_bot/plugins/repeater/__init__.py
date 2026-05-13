@@ -9,6 +9,9 @@
 - 且本轮尚未触发过
 
 默认配置偏保守：至少 3 条消息、3 个不同用户。
+
+另有一个可选的“首字母联想复读”（拼音首字母相同但内容不同也可能触发），默认关闭。
+如需开启，请在配置中设置 `repeater_initialism_enabled=true`。
 """
 
 from __future__ import annotations
@@ -241,7 +244,7 @@ async def handle_repeater(bot: Bot, event: GroupMessageEvent):
         cooldown = float(getattr(config, "repeater_cooldown_seconds", 10.0))
         debug = bool(getattr(config, "repeater_debug", False))
 
-        initialism_enabled = bool(getattr(config, "repeater_initialism_enabled", True))
+        initialism_enabled = bool(getattr(config, "repeater_initialism_enabled", False))
         initialism_min_messages = int(getattr(config, "repeater_initialism_min_messages", 2))
         initialism_min_users = int(getattr(config, "repeater_initialism_min_users", 2))
         initialism_min_len = int(getattr(config, "repeater_initialism_min_len", 2))

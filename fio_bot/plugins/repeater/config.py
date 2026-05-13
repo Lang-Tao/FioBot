@@ -5,7 +5,7 @@ class Config(BaseModel):
     """复读插件配置"""
 
     # 开启后会在日志中输出计数/重置原因，便于排查未触发问题
-    repeater_debug: bool = True
+    repeater_debug: bool = False
 
     # 连续相同消息达到多少条后触发（包含不同用户的发送）
     repeater_min_messages: int = 3
@@ -22,7 +22,7 @@ class Config(BaseModel):
     # ==================== 首字母联想复读 ====================
 
     # 是否启用“拼音首字母相同但内容不同”的联想复读
-    repeater_initialism_enabled: bool = True
+    repeater_initialism_enabled: bool = False
 
     # 首字母联想触发所需的消息条数
     repeater_initialism_min_messages: int = 2
